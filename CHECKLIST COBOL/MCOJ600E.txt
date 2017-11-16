@@ -1,0 +1,82 @@
+//MCOJ600E JOB ,,CLASS=A,MSGCLASS=0,REGION=32M,COND=(0,NE)                      000010              
+//**********************************************************************        000020              
+//*  AUTOR          : ALEJANDRO VIELMA                                 *        000030              
+//*  ENCARGADO BCO  : ANGELA HERNANDEZ                                 *        000040              
+//*  FECHA CREACION : 12/01/2016                                       *        000050              
+//*  OBJETIVO       : RECIBE CARGOS AGUAS ANDINAS CONVIERTE A MOV      *        000060              
+//*                   ENTRANTE OPF LINUX.                              *        000070              
+//*--------------------------------------------------------------------*        000080              
+//JOBLIB   DD DSN=EXPL.BATCH.LOADLIB,DISP=SHR                                   000090              
+//         DD DSN=EXPL.INGESIST.LOADLIB,DISP=SHR                                000100              
+//*--------------------------------------------------------------------*        000110              
+//* BORRAR ARCHIVOS DE TRABAJO                                         *        000120              
+//*--------------------------------------------------------------------*        000130              
+//STEP0010 EXEC PGM=IDCAMS                                                      000140              
+//SYSOUT   DD  SYSOUT=*                                                         000150              
+//SYSPRINT DD  SYSOUT=*                                                         000160              
+//SYSIN    DD  *                                                                000170              
+  DELETE PMCO.NW.MDTOSREC.EMOS  SCRATCH NONVSAM                                 000180              
+  DELETE PMCO.NW.MDTOSOPF.EMOS  SCRATCH NONVSAM                                 000190              
+  SET MAXCC = 0                                                                 000200              
+/*                                                                              000210              
+//*--------------------------------------------------------------------*        000220              
+//* LLAMA A PROGRAMA PACB013 EL CUAL RECIBE ARCHIVO EMPRESA            *        000230              
+//*--------------------------------------------------------------------*        000240              
+//STEP0020 EXEC PGM=PACB013                                                     000250              
+//SYSOUT   DD  SYSOUT=*                                                         000260              
+//SYSDBOUT DD  SYSOUT=*                                                         000270              
+//SYSUDUMP DD  SYSOUT=*                                                         000280              
+//SYSPRINT DD  SYSOUT=*                                                         000290              
+//SYSABOUT DD  SYSOUT=*                                                         000300              
+//ENTRADA  DD  DSN=PCDS.NW.CARGOS.SOL,DISP=SHR                                  000310              
+//SYSIN    DD  DSN=EXPL.SYSIN.PARMLIB.MCO(MCOPAA1),DISP=SHR                     000320              
+/*                                                                              000330              
+//*--------------------------------------------------------------------*        000340              
+//* CATALOGA ARCHIVO QUE SE UTILIZARA CON DATA DESDE FTP               *        000350              
+//*--------------------------------------------------------------------*        000360              
+//STEP0030 EXEC PGM=IEFBR14                                                     000370              
+//MDTOSREC   DD DSN=PMCO.NW.MDTOSREC.EMOS,DISP=(NEW,CATLG),                     000380              
+//           DCB=(DSORG=PS,RECFM=FB,LRECL=128,BLKSIZE=27860),                   000390              
+//           UNIT=SYSDA,SPACE=(CYL,(2,1),RLSE)                                  000400              
+//*--------------------------------------------------------------------*        000410              
+//* RESCATA ARCHIVO FTP DE AGUAS ANDINAS                               *        000420              
+//*--------------------------------------------------------------------*        000430              
+//STEP0040 EXEC PGM=FTP,PARM='(EXIT'                                            000440              
+//SYSPRINT DD  SYSOUT=*                                                         000450              
+//INPUT DD DSN=EXPL.SYSIN.FTP(S7RECURS),DISP=SHR                                000460              
+//      DD *                                                                    000470              
+CD PAC/DESDENT                                                                  000480              
+GET AANDINA_M.DAT   'PMCO.NW.MDTOSREC.EMOS' (REPL                               000490              
+CLOSE                                                                           000500              
+QUIT                                                                            000510              
+/*                                                                              000520              
+//*--------------------------------------------------------------------*        000530              
+//* SE LLAMA PROGRAMA MCOB600E: ENCARGADO DE FORMATEAR A OPF           *        000540              
+//* PROCESO MOVIMIENTOS AGUAS ANDINAS INTERFACE ENTRANTE               *        000550              
+//*--------------------------------------------------------------------*        000560              
+//STEP0050 EXEC PGM=MCOB600E                                                    000570              
+//SYSOUT   DD  SYSOUT=*                                                         000580              
+//SYSDBOUT DD  SYSOUT=*                                                         000590              
+//SYSUDUMP DD  SYSOUT=*                                                         000600              
+//SYSPRINT DD  SYSOUT=*                                                         000610              
+//ENTRADA  DD DSN=PMCO.NW.MDTOSREC.EMOS,DISP=SHR                                000620              
+//SALIDA   DD DSN=PMCO.NW.MDTOSOPF.EMOS,                                        000630              
+//            UNIT=SYSDA,SPACE=(CYL,(100,10),RLSE),                             000640              
+//            DISP=(NEW,CATLG),LRECL=140,RECFM=FB,BLKSIZE=27860                 000650              
+//SYSIN    DD *                                                                 000660              
+%DIAHOY21                                                                       000670              
+/*                                                                              000680              
+//         DD  DSN=EXPL.SYSIN.PARMLIB.MCO(MCOPAA2),DISP=SHR                     000690              
+/*                                                                              000700              
+//*--------------------------------------------------------------------*        000710              
+//* SE ENVIA INTERFACE AGUAS ANDINAS A OPF                             *        000720              
+//*--------------------------------------------------------------------*        000730              
+//STEP0060  EXEC PGM=FTP,PARM='(EXIT'                                           000740              
+//SYSPRINT DD SYSOUT=*                                                          000750              
+//INPUT DD DSN=EXPL.SYSIN.FTP(LXIMCO01),DISP=SHR                                000760              
+//      DD *                                                                    000770              
+CD MCO/FTP/INPUT/RESULTADO                                                      000780              
+PUT 'PMCO.NW.MDTOSOPF.EMOS' BATCH-OPF000-EMOS-%DIAHOY22..RES                    000790              
+CLOSE                                                                           000800              
+QUIT                                                                            000810              
+/*                                                                              000820              

@@ -1,0 +1,88 @@
+//SPMJ324  JOB ,,MSGCLASS=0,CLASS=A,MSGLEVEL=(1,1)                              000010                                                                
+//*********************************************************************         000020                                                                
+//*  INSTITUCION  : BANCO DEL ESTADO DE CHILE                         *         000030                                                                
+//*  SISTEMA      : PAGOS MASIVOS                                     *         000040                                                                
+//*  JCL          : SPMJ324                                           *         000050                                                                
+//*  ENCARGADO    : JUAN MARIN CUETO                                  *         000060                                                                
+//*  AUTOR        : JUAN MARIN CUETO                                  *         000070                                                                
+//*  FECHA        : 12.01.2005                                        *         000080                                                                
+//*  OBJETIVO     : PROCESO DE VALIDACION RETENCIONES JUDICIA         *         000090                                                                
+//*                 LES Y ASIG.FAMILIARES DE CAPREDENA.               *         000100                                                                
+//*-------------------------------------------------------------------*         000110                                                                
+//* FECHA MODIFICACION : 14.02.2017                                   *         000120                                                                
+//* RESPONSABLE        : DIEGO MARTINEZ LOPEZ                         *         000130                                                                
+//* MODIFICACION       : -SE AGREGA STEP0020 PARA PREPARAR ARCHIVO DE *         000140                                                                
+//*                       ENTRADA A PGM                               *         000150                                                                
+//*                    SE AGREGA ARCHIVO A PSPM.NW.BASE.DIS.PDRD.L1361*         000160                                                                
+//*                    A DELETE DE ARCHIVOS.                          *         000170                                                                
+//*                      -SE REENUMERAN LOS STEP Y SE NORMALIZA JCL   *         000180                                                                
+//*                    DE ACUERDO A NORMATIVA BANCO VIGENTE           *         000190                                                                
+//*-------------------------------------------------------------------*         000200                                                                
+//* FECHA MODIFICACION : 28.04.2011                                   *         000210                                                                
+//* RESPONSABLE        : MARIANA RODRIGUEZ F.                         *         000220                                                                
+//* MODIFICACION       : SE MODIFICA STEP13 (DISP)                    *         000230                                                                
+//*-------------------------------------------------------------------*         000240                                                                
+//JOBLIB   DD  DSN=DB2.V101.DB2A.SDSNEXIT,DISP=SHR                              000250                                                                
+//         DD  DSN=DB2.V101.DB2A.SDSNLOAD,DISP=SHR                              000260                                                                
+//         DD  DSN=DB2.V101.DB2A.RUNLIB.LOAD,DISP=SHR                           000270                                                                
+//         DD  DSN=EXPL.BATCH.LOADLIB,DISP=SHR                                  000280                                                                
+//         DD  DSN=EXPL.INGESIST.LOADLIB,DISP=SHR                               000290                                                                
+//*-------------------------------------------------------------------*         000300                                                                
+//* STEP0010:  BORRA ARCHIVOS DEL PROCESO                             *         000310                                                                
+//*-------------------------------------------------------------------*         000320                                                                
+//STEP0010 EXEC PGM=IDCAMS                                                      000330                                                                
+//SYSPRINT DD  SYSOUT=*                                                         000340                                                                
+//SYSIN    DD *                                                                 000350                                                                
+  DELETE PSPM.NM.DETPDRD             SCRATCH NONVSAM                            000360                                                                
+  DELETE PSPM.NM.BPMPDRD2            SCRATCH NONVSAM                            000370                                                                
+  DELETE PSPM.NM.LINPDRD             SCRATCH NONVSAM                            000380                                                                
+  DELETE PSPM.NM.BASE.DIA.PDRD.L1361.SORT SCRATCH NONVSAM                       000390                                                                
+       SET MAXCC = 0                                                            000400                                                                
+/*                                                                              000410                                                                
+//*---------------------------------------------------------------------        000420                                                                
+//* STEP0020:  SORT POR CORTAR ARCHIVO  ENTRADA PGM                             000430                                                                
+//*---------------------------------------------------------------------        000440                                                                
+//STEP0020 EXEC PGM=SORT,COND=(0,NE)                                            000450                                                                
+//SYSOUT   DD SYSOUT=*                                                          000460                                                                
+//SORTWK01 DD UNIT=SYSDA,SPACE=(CYL,(10,1))                                     000470                                                                
+//SORTWK02 DD UNIT=SYSDA,SPACE=(CYL,(10,1))                                     000480                                                                
+//SORTWK03 DD UNIT=SYSDA,SPACE=(CYL,(10,1))                                     000490                                                                
+//SORTIN   DD DSN=PSPM.NM.BASE.DIA.PDRD,DISP=OLD                                000500                                                                
+//SORTOUT  DD DSN=PSPM.NM.BASE.DIA.PDRD.L1361.SORT,DISP=(NEW,CATLG),            000510                                                                
+//         UNIT=SYSDA,SPACE=(CYL,(20,2),RLSE),                                  000520                                                                
+//         DCB=(DSORG=PS,RECFM=FB,LRECL=1361,BLKSIZE=27220)                     000530                                                                
+//SYSIN    DD *                                                                 000540                                                                
+    SORT FIELDS=COPY                                                            000550                                                                
+    OUTREC FIELDS=(01,1361)                                                     000560                                                                
+    RECORD TYPE=F,LENGTH=(1361,1361)                                            000570                                                                
+/*                                                                              000580                                                                
+//*-------------------------------------------------------------------*         000590                                                                
+//* STEP0030:  PROGRAMA GENERA ARCHIVO DET Y BPM                      *         000600                                                                
+//*-------------------------------------------------------------------*         000610                                                                
+//STEP0030  EXEC PGM=IKJEFT01,COND=(0,NE)                                       000620                                                                
+//SYSOUT    DD SYSOUT=*                                                         000630                                                                
+//SYSDBOUT  DD SYSOUT=*                                                         000640                                                                
+//SYSUDUMP  DD SYSOUT=*                                                         000650                                                                
+//SYSPRINT  DD SYSOUT=*                                                         000660                                                                
+//SYSTSPRT  DD SYSOUT=*                                                         000670                                                                
+//SPMYBDIA  DD DSN=PSPM.NM.BASE.DIA.PDRD.L1361,DISP=OLD                         000680                                                                
+//SPMYSISA  DD DSN=PSPM.NM.GLS,DISP=SHR                                         000690                                                                
+//SPMYISAP  DD DSN=PSPM.NM.FTP.GLOSAL,DISP=SHR                                  000700                                                                
+//SPMYPDET  DD DSN=PSPM.NM.DETPDRD,DISP=(NEW,CATLG),                            000710                                                                
+//          DCB=(DSORG=PS,RECFM=FB,LRECL=245,BLKSIZE=27930),                    000720                                                                
+//          SPACE=(CYL,(20,2),RLSE),UNIT=SYSDA                                  000730                                                                
+//SPMYPBPM  DD DSN=PSPM.NM.BPMPDRD2,DISP=(NEW,CATLG),                           000740                                                                
+//          DCB=(DSORG=PS,RECFM=FB,LRECL=73,BLKSIZE=27959),                     000750                                                                
+//          SPACE=(CYL,(20,2),RLSE),UNIT=SYSDA                                  000760                                                                
+//SPMYPLIN  DD DSN=PSPM.NM.LINPDRD,DISP=(NEW,CATLG),                            000770                                                                
+//          DCB=(DSORG=PS,RECFM=FB,LRECL=111,BLKSIZE=27861),                    000780                                                                
+//          SPACE=(CYL,(20,2),RLSE),UNIT=SYSDA                                  000790                                                                
+//SYSTSIN  DD *                                                                 000800                                                                
+  DSN SYSTEM(DB2P)                                                              000810                                                                
+  RUN PROGRAM(SPML506)                         -                                000820                                                                
+      PLAN(PPISI) LIB('EXPL.BATCH.LOADLIB')                                     000830                                                                
+  END                                                                           000840                                                                
+/*                                                                              000850                                                                
+//SYSIN     DD *                                                                000860                                                                
+%DIAHOY22                                                                       000870                                                                
+/*                                                                              000880                                                                

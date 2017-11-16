@@ -1,0 +1,858 @@
+       IDENTIFICATION DIVISION.                                                 000010                                                                
+      *------------------------                                                 000020                                                                
+       PROGRAM-ID.      RPCL013.                                                000030                                                                
+      **********************************************************                000040                                                                
+      * INSTITUCION   : BANCO DEL ESTADO DE CHILE              *                000050                                                                
+      * SISTEMA       : RECAUDACION POR CAJA                   *                000060                                                                
+      * MODULO        : RPC                                    *                000070                                                                
+      * PROGRAMA      : RPCL013                                *                000080                                                                
+      * ENCARGADO     : JUAN PABLO SOTO                        *                000090                                                                
+      * ANALISTA      : ENRIQUE MARIN I.                       *                000100                                                                
+      * PROGRAMADOR   : ENRIQUE MARIN I.                       *                000110                                                                
+      * FECHA CREACION: 24/10/2008                             *                000120                                                                
+      *                                                        *                000130                                                                
+      * OBJETIVO PROGRAMA :                                    *                000140                                                                
+      *    GENERA INTERFAZ PARA CONVENIO DE ABONO              *                000150                                                                
+      *                                                        *                000160                                                                
+      * INPUT : - TABLA T123IFC, T123RCJ                       *                000170                                                                
+      *         - ARCHIVO DE RECAUDACION                       *                000180                                                                
+      * OUTPUT: - INTERFAZ PARA CONVENIO DE ABONO              *                000190                                                                
+      *                                                        *                000200                                                                
+      **********************************************************                000210                                                                
+      *                    MODIFICACION                        *                000220                                                                
+      **********************************************************                000230                                                                
+      *    OBJETIVO                              * RESPONSABLE *                000240                                                                
+      *                                          *   FECHA     *                000250                                                                
+      **********************************************************                000260                                                                
+      * INCOPORA PARAMETRO DE RUT DE CUENTA DE   * JUAN SOTO A *                000270                                                                
+      * ABONO OTROS BANCOS (JPSA01)              * 13/02/2009  *                000280                                                                
+      **********************************************************                000290                                                                
+      * INCORPORACION CONVENIOS DE RECAUDACION   * CLAUDIA     *                000300                                                                
+      * DE CLIENTES QUE NO POSEEN CUENTA EN      * GOMEZ C.    *                000310                                                                
+      * BANCO ESTADO.                            * 14/08/2009  *                000320                                                                
+      **********************************************************                000330                                                                
+      * MODIFICACION EN LA FORMA QUE RECIBE LA   * SEBASTIAN   *                000340                                                                
+      * FECHA DE PROCESO. PROBLEMAS OCASIONADOS  * MORALES L.  *                000350                                                                
+      * AL CAMBIAR AL ANO 2013                   * 27/12/2012  *                000360                                                                
+      **********************************************************                000370                                                                
+      * NO CONTABILIZA CONVENIOS TRANSANTIAGO    * JUAN P.SOTO *                000380                                                                
+      *                                          * AZOCAR      *                000390                                                                
+      *                                          * 06/08/2013  *                000400                                                                
+      **********************************************************                000410                                                                
+      * SE MODIFICA ACUMULADOR DE MONTO          * AUGUSTO J.  *                000420                                                                
+      * WS-CONT-TOT-MTO AUMENTANDO PIC A 15.     * EDDING      *                000430                                                                
+      * MAU 5219840. AEV01                       * 04/11/2016  *                000440                                                                
+      **********************************************************                000450                                                                
+      * -SE MODIFICA EL TIPO DE DATO DE LA       * OSCAR YIMA  *                000460                                                                
+      *  VARIABLE WS-RV-BNFPARA SOLUCIONAR PRO-  * FLORES      *                000470                                                                
+      *  BLEMA DEL DIGITO VERIFICADOR.           * 06/01/2017  *                000480                                                                
+      * -SE AJUSTA PGM A NORMA BECH 2017.                      *                000490                                                                
+      **********************************************************                000500                                                                
+       ENVIRONMENT DIVISION.                                                    000510                                                                
+      *--------------------                                                     000520                                                                
+       CONFIGURATION SECTION.                                                   000530                                                                
+      *---------------------                                                    000540                                                                
+       SPECIAL-NAMES.   DECIMAL-POINT IS COMMA.                                 000550                                                                
+       INPUT-OUTPUT SECTION.                                                    000560                                                                
+      *--------------------                                                     000570                                                                
+       FILE-CONTROL.                                                            000580                                                                
+      *-------------                                                            000590                                                                
+           SELECT ENTRADA   ASSIGN TO ENTRADA                                   000600                                                                
+                                      STATUS IS FS-ENT.                         000610                                                                
+                                                                                000620                                                                
+           SELECT SALIDA    ASSIGN TO SALIDA                                    000630                                                                
+                                      STATUS IS FS-SAL.                         000640                                                                
+                                                                                000650                                                                
+           SELECT LISTOBCO ASSIGN TO LISTOBCO                                   000660                                                                
+                                      STATUS IS FS-LIST.                        000670                                                                
+                                                                                000680                                                                
+           SELECT INTERFAZ  ASSIGN TO INTERFAZ                                  000690                                                                
+                                      STATUS IS FS-INT.                         000700                                                                
+                                                                                000710                                                                
+       DATA DIVISION.                                                           000720                                                                
+      *-------------                                                            000730                                                                
+       FILE SECTION.                                                            000740                                                                
+      *-------------                                                            000750                                                                
+                                                                                000760                                                                
+       FD  ENTRADA                                                              000770                                                                
+           RECORDING MODE IS F.                                                 000780                                                                
+       01  RPCMOV-REG                PIC X(350).                                000790                                                                
+                                                                                000800                                                                
+       FD  SALIDA                                                               000810                                                                
+           RECORDING MODE IS F.                                                 000820                                                                
+       01  REG-SALIDA                PIC X(450).                                000830                                                                
+                                                                                000840                                                                
+       FD  LISTOBCO                                                             000850                                                                
+           RECORDING MODE IS F.                                                 000860                                                                
+       01  REG-LISTOBCO              PIC X(129).                                000870                                                                
+                                                                                000880                                                                
+       FD  INTERFAZ                                                             000890                                                                
+           RECORDING MODE F.                                                    000900                                                                
+       01  INTERFAZ-REG              PIC X(241).                                000910                                                                
+                                                                                000920                                                                
+       WORKING-STORAGE SECTION.                                                 000930                                                                
+      *------------------------                                                 000940                                                                
+                                                                                000950                                                                
+       01  VARIOS.                                                              000960                                                                
+           02 FS-SAL                  PIC 99.                                   000970                                                                
+              88 FS-SAL-OK            VALUE 0.                                  000980                                                                
+              88 FS-SAL-EOF           VALUE 10.                                 000990                                                                
+           02 FS-LIST                 PIC 99.                                   001000                                                                
+              88 FS-LIST-OK           VALUE 0.                                  001010                                                                
+              88 FS-LIST-EOF          VALUE 10.                                 001020                                                                
+           02 FS-INT                  PIC 99.                                   001030                                                                
+              88 FS-INT-OK            VALUE 0.                                  001040                                                                
+              88 FS-INT-EOF           VALUE 10.                                 001050                                                                
+           02 FS-ENT                  PIC 99.                                   001060                                                                
+              88 FS-ENT-OK            VALUE 0.                                  001070                                                                
+              88 FS-ENT-EOF           VALUE 10.                                 001080                                                                
+           02 SQLCODE-E               PIC S9(04) LEADING SEPARATE.              001090                                                                
+           02 WS-IFC                  PIC 9(01) VALUE ZEROES.                   001100                                                                
+              88 WS-IFC-OK            VALUE 0.                                  001110                                                                
+              88 WS-IFC-NO            VALUE 1.                                  001120                                                                
+           02 WS-RCJ                  PIC 9(01) VALUE ZEROES.                   001130                                                                
+              88 WS-RCJ-OK            VALUE 0.                                  001140                                                                
+              88 WS-RCJ-NO            VALUE 1.                                  001150                                                                
+           02 WS-NUM-CVN-ANT          PIC 9(12) VALUE ZEROES.                   001160                                                                
+           02 FILLER REDEFINES WS-NUM-CVN-ANT.                                  001170                                                                
+              05 FILLER               PIC 9(02).                                001180                                                                
+              05 WS-COD-ARA           PIC 9(03).                                001190                                                                
+              05 WS-TIP-SER           PIC 9(02).                                001200                                                                
+              05 WS-NUM-CRV           PIC 9(05).                                001210                                                                
+           02  WS-MTO-ACC             PIC 9(13)V99 VALUE ZEROES.                001220                                                                
+           02  WS-FECHA-D22           PIC X(08).                                001230                                                                
+           02  WS-FECHA-D02           PIC X(08).                                001240                                                                
+           02  WS-CANAL-GR.                                                     001250                                                                
+               05 WS-CANAL            PIC X(03).                                001260                                                                
+               05 FILLER              PIC X(07)  VALUE SPACES.                  001270                                                                
+                                                                                001280                                                                
+           02  WS-TITULOS-1.                                                    001290                                                                
+               05 FILLER              PIC X(05) VALUE SPACE.                    001300                                                                
+               05 FILLER              PIC X(12)                                 001310                                                                
+                                     VALUE 'BANCO ESTADO'.                      001320                                                                
+               05 FILLER              PIC X(102) VALUE SPACES.                  001330                                                                
+               05 FILLER              PIC X(07)                                 001340                                                                
+                                     VALUE 'RPCL013'.                           001350                                                                
+               05 FILLER              PIC X(03) VALUE SPACES.                   001360                                                                
+                                                                                001370                                                                
+           02  WS-TITULOS-2.                                                    001380                                                                
+               05 FILLER              PIC X(20)                                 001390                                                                
+                                     VALUE 'RECAUDACION POR CAJA'.              001400                                                                
+               05 FILLER              PIC X(35) VALUE SPACES.                   001410                                                                
+               05 FILLER              PIC X(21)                                 001420                                                                
+                                     VALUE 'ABONOS A OTROS BANCOS'.             001430                                                                
+               05 FILLER              PIC X(43) VALUE SPACES.                   001440                                                                
+               05 WS-FECHA-LIST       PIC X(10) VALUE SPACES.                   001450                                                                
+                                                                                001460                                                                
+           02  WS-TITULOS-3.                                                    001470                                                                
+               05 FILLER              PIC X(54) VALUE SPACES.                   001480                                                                
+               05 FILLER              PIC X(13)                                 001490                                                                
+                                     VALUE 'FECHA ABONO: '.                     001500                                                                
+               05 WS-FECHA-D02-LIST   PIC X(10) VALUE SPACES.                   001510                                                                
+               05 FILLER              PIC X(42) VALUE SPACES.                   001520                                                                
+                                                                                001530                                                                
+               05 WS-SYS-LIST         PIC X(10) VALUE SPACES.                   001540                                                                
+                                                                                001550                                                                
+           02  WS-ESPACIO.                                                      001560                                                                
+               05 FILLER              PIC X(141) VALUE SPACES.                  001570                                                                
+                                                                                001580                                                                
+           02  WS-TITULOS-4.                                                    001590                                                                
+               05 FILLER              PIC X(08)                                 001600                                                                
+                                     VALUE 'CONVENIO'.                          001610                                                                
+               05 FILLER              PIC X(05) VALUE SPACES.                   001620                                                                
+               05 FILLER              PIC X(07)                                 001630                                                                
+                                     VALUE 'EMPRESA'.                           001640                                                                
+               05 FILLER              PIC X(55) VALUE SPACES.                   001650                                                                
+               05 FILLER              PIC X(16)                                 001660                                                                
+                                     VALUE 'RUT BENEFICIARIO'.                  001670                                                                
+               05 FILLER              PIC X(01) VALUE SPACES.                   001680                                                                
+               05 FILLER              PIC X(05)                                 001690                                                                
+                                     VALUE 'MONTO'.                             001700                                                                
+               05 FILLER              PIC X(11) VALUE SPACES.                   001710                                                                
+               05 FILLER              PIC X(06)                                 001720                                                                
+                                     VALUE 'CUENTA'.                            001730                                                                
+               05 FILLER              PIC X(15) VALUE SPACES.                   001740                                                                
+                                                                                001750                                                                
+           02  WS-LINEA.                                                        001760                                                                
+               05 FILLER              PIC X(141) VALUE ALL '-'.                 001770                                                                
+                                                                                001780                                                                
+           02  WS-VALORES.                                                      001790                                                                
+               05 WS-NUM-CON          PIC 9(12).                                001800                                                                
+               05 FILLER              PIC X(01) VALUE SPACES.                   001810                                                                
+               05 WS-EMPRESA          PIC X(61).                                001820                                                                
+               05 FILLER              PIC X(01) VALUE SPACES.                   001830                                                                
+               05 WS-RUT-BENE         PIC X(10).                                001840                                                                
+               05 FILLER              PIC X(07) VALUE SPACES.                   001850                                                                
+               05 WS-MONTO            PIC 9(15).                                001860                                                                
+               05 FILLER              PIC X(01) VALUE SPACES.                   001870                                                                
+               05 WS-CUENTA           PIC X(21).                                001880                                                                
+                                                                                001890                                                                
+           02 WS-RUT-BNF.                                                       001900                                                                
+              05 WS-RT-BNF            PIC 9(09).                                001910                                                                
+              05 WS-RV-BNF            PIC X(01).                                001920                                                                
+                                                                                001930                                                                
+           02 WS-CTA.                                                           001940                                                                
+              05 WS-COD-BCO           PIC 9(03).                                001950                                                                
+              05 FILLER               PIC X(01) VALUE '-'.                      001960                                                                
+              05 WS-CTA-ABN           PIC 9(17).                                001970                                                                
+                                                                                001980                                                                
+           02 WS-EMP.                                                           001990                                                                
+              05 WS-IFC-RT            PIC X(09).                                002000                                                                
+              05 WS-IFC-RV            PIC X(01).                                002010                                                                
+              05 FILLER               PIC X(01) VALUE SPACES.                   002020                                                                
+              05 WS-IFC-CNV           PIC X(50).                                002030                                                                
+                                                                                002040                                                                
+           02 WS-RCJ-COD-BCO          PIC 9(03).                                002050                                                                
+           02 FILLER REDEFINES WS-RCJ-COD-BCO.                                  002060                                                                
+              05 WS-RCJ-COD-BCO-R     PIC X(03).                                002070                                                                
+                                                                                002080                                                                
+       01  SWITCHES.                                                            002090                                                                
+           05 WS-ERROR-CIERRE-ARCHIVO  PIC X(02) VALUE 'NO'.                    002100                                                                
+              88 WS-ERROR-CIERRE-ARCHIVO-SI      VALUE 'SI'.                    002110                                                                
+           05 SW-BCO                   PIC X(02).                               002120                                                                
+              88 SW-BCO-OK                       VALUE 'OK'.                    002130                                                                
+              88 SW-BCO-NO                       VALUE 'NO'.                    002140                                                                
+           05 WS-NUM-CVN               PIC 9(10).                               002150                                                                
+              88 WS-NUM-CVN-CTB-NOK     VALUE 0014102802 0014102770             002160                                                                
+                        0014802808 0014702806 0014702807 0014902809.            002170                                                                
+           05 SW-FLAG1                  PIC X(02).                              002180                                                                
+              88 SW-FLAG-CLOSE-ENT-SI                   VALUE 'SI'.             002190                                                                
+              88 SW-FLAG-CLOSE-ENT-NO                   VALUE 'NO'.             002200                                                                
+                                                                                002210                                                                
+           05 SW-FLAG2                  PIC X(02).                              002220                                                                
+              88 SW-FLAG-CLOSE-SAL-SI                   VALUE 'SI'.             002230                                                                
+              88 SW-FLAG-CLOSE-SAL-NO                   VALUE 'NO'.             002240                                                                
+                                                                                002250                                                                
+           05 SW-FLAG3                  PIC X(02).                              002260                                                                
+              88 SW-FLAG-CLOSE-LIS-SI                   VALUE 'SI'.             002270                                                                
+              88 SW-FLAG-CLOSE-LIS-NO                   VALUE 'NO'.             002280                                                                
+                                                                                002290                                                                
+           05 SW-FLAG4                  PIC X(02).                              002300                                                                
+              88 SW-FLAG-CLOSE-INT-SI                   VALUE 'SI'.             002310                                                                
+              88 SW-FLAG-CLOSE-INT-NO                   VALUE 'NO'.             002320                                                                
+                                                                                002330                                                                
+       01  CONTADOR.                                                            002340                                                                
+           05 WS-CONT-LEI-ENT         PIC 9(08)  VALUE ZEROES.                  002350                                                                
+           05 WS-CONT-GRA-SAL         PIC 9(08)  VALUE ZEROES.                  002360                                                                
+           05 WS-CONT-GRA-INT         PIC 9(08)  VALUE ZEROES.                  002370                                                                
+           05 WS-CONT-GRA-LIST        PIC 9(08)  VALUE ZEROES.                  002380                                                                
+           05 WS-CONT-TOT-MTO         PIC 9(15)  VALUE ZEROES.                  002390                                                                
+           05 WS-CONT-CNT-REG         PIC 9(08)  VALUE ZEROES.                  002400                                                                
+                                                                                002410                                                                
+       01  CONSTANTES.                                                          002420                                                                
+           05 CT-RUT-EMP              PIC 9(09)  VALUE 97030000.                002430                                                                
+           05 CT-COD-CVN              PIC 9(10)  VALUE 0010204187.              002440                                                                
+           05 CT-DV-EMP               PIC 9(01)  VALUE 7.                       002450                                                                
+           05 CT-1                    PIC 9(02)  VALUE 01.                      002460                                                                
+           05 CT-2                    PIC 9(02)  VALUE 02.                      002470                                                                
+           05 CT-3                    PIC 9(02)  VALUE 03.                      002480                                                                
+           05 CT-5                    PIC 9(01)  VALUE 5.                       002490                                                                
+           05 CT-6                    PIC 9(01)  VALUE 6.                       002500                                                                
+           05 CT-8                    PIC 9(01)  VALUE 8.                       002510                                                                
+           05 CT-16                   PIC 9(02)  VALUE 16.                      002520                                                                
+           05 CT-11                   PIC 9(02)  VALUE 11.                      002530                                                                
+           05 CT-012                  PIC 9(03)  VALUE 012.                     002540                                                                
+           05 CT-SPM                  PIC X(04)  VALUE 'SPM '.                  002550                                                                
+           05 CT-RPC                  PIC X(03)  VALUE 'RPC'.                   002560                                                                
+           05 CT-REC-OBCO             PIC X(10)  VALUE 'REC-OBCO  '.            002570                                                                
+           05 CT-ABONO                PIC X(10)  VALUE 'ABONO     '.            002580                                                                
+           05 CT-UNO                  PIC 9(04)  VALUE 0001.                    002590                                                                
+           05 CT-MONTO                PIC X(10)  VALUE 'MONTO     '.            002600                                                                
+           05 CT-999                  PIC X(03)  VALUE '999'.                   002610                                                                
+           05 CT-BANCO                PIC X(10)  VALUE 'BANCO     '.            002620                                                                
+           05 CT-NO                   PIC X(02)  VALUE 'NO'.                    002630                                                                
+           05 CT-001                  PIC X(03)  VALUE '001'.                   002640                                                                
+           05 CT-SI                   PIC X(02)  VALUE 'SI'.                    002650                                                                
+           05 CT-OK                   PIC X(02)  VALUE 'OK'.                    002660                                                                
+           05 CT-NOT                  PIC X(02)  VALUE 'NO'.                    002670                                                                
+           05 CT-GUION                PIC X(01)  VALUE '-'.                     002680                                                                
+           05 CT-SPACE10              PIC X(10)  VALUE '          '.            002690                                                                
+           05 CT-2PTS                 PIC X(01)  VALUE ':'.                     002700                                                                
+           05 CT-TEGR006X             PIC X(08)  VALUE 'TEGR006X'.              002710                                                                
+           05 CT-100                  PIC S9(03) VALUE +100.                    002720                                                                
+           05 CT-DSNTIAR              PIC X(07)  VALUE 'DSNTIAR'.               002730                                                                
+           05 CT-SPM2BTG0             PIC X(08)  VALUE 'SPM2BTG0'.              002740                                                                
+           05 CT-CANAL                PIC X(10)  VALUE 'CANAL     '.            002750                                                                
+           05 CT-000                  PIC 9(03)  VALUE 000.                     002760                                                                
+           05 CT-002                  PIC 9(03)  VALUE 002.                     002770                                                                
+           05 CT-018                  PIC 9(03)  VALUE 018.                     002780                                                                
+           05 CT-024                  PIC 9(03)  VALUE 024.                     002790                                                                
+                                                                                002800                                                                
+       01  PARAMETROS.                                                          002810                                                                
+           02  HORA-SYS.                                                        002820                                                                
+               05 HRA-SYS-HH          PIC 9(02).                                002830                                                                
+               05 HRA-SYS-MM          PIC 9(02).                                002840                                                                
+               05 HRA-SYS-SS          PIC 9(02).                                002850                                                                
+               05 FILLER              PIC 9(02).                                002860                                                                
+           02  WS-FECHA.                                                        002870                                                                
+               05 WS-ANO              PIC X(04).                                002880                                                                
+               05 WS-MES              PIC X(02).                                002890                                                                
+               05 WS-DIA              PIC X(02).                                002900                                                                
+                                                                                002910                                                                
+           02 RUTINA-TEGR006              VALUE ZEROES.                         002920                                                                
+              05 FECHA.                                                         002930                                                                
+SML              10 RUT-DIA           PIC 9(02).                                002940                                                                
+SML              10 RUT-MES           PIC 9(02).                                002950                                                                
+SML              10 RUT-ANO           PIC 9(04).                                002960                                                                
+              05 INDICADOR            PIC X(01).                                002970                                                                
+                                                                                002980                                                                
+       01 STRINGS.                                                              002990                                                                
+           05 WS-HORA                 PIC X(10).                                003000                                                                
+           05 WS-FECHA-I              PIC X(10).                                003010                                                                
+           05 WS-FECHA-ABONO          PIC X(10).                                003020                                                                
+                                                                                003030                                                                
+      *------------ RUTINA SPM2BTG0 (VERSION DB2 BTGR085 ) -----------*         003040                                                                
+       01  BCC-084-REG.                                                         003050                                                                
+           03 BC84-COD-CRV            PIC  X(04).                               003060                                                                
+           03 BC84-NUM-CRV            PIC  9(08).                               003070                                                                
+           03 BC84-COD-RET            PIC  X(02).                               003080                                                                
+           03 BC84-MENSAJE            PIC  X(78).                               003090                                                                
+                                                                                003100                                                                
+           COPY CDSYAPAG.                                                       003110                                                                
+           COPY RPCYMCTB.                                                       003120                                                                
+           COPY RPCYMOV.                                                        003130                                                                
+                                                                                003140                                                                
+           EXEC SQL INCLUDE SQLCA   END-EXEC.                                   003150                                                                
+           EXEC SQL INCLUDE T123IFC END-EXEC.                                   003160                                                                
+           EXEC SQL INCLUDE T123RCJ END-EXEC.                                   003170                                                                
+                                                                                003180                                                                
+      *---------------------------------------------------------------          003190                                                                
+      *  MENSAJES DE ERROR PARA DSNTIAR                                         003200                                                                
+      *---------------------------------------------------------------          003210                                                                
+       01  W-MENSAJE-ERR.                                                       003220                                                                
+           05 W-LARGO-MENSAJE       PIC S9(04)  COMP VALUE +960.                003230                                                                
+           05 W-TEXTO-MENSAJE       PIC X(120)                                  003240                                                                
+                             OCCURS 8 TIMES INDEXED BY IERR.                    003250                                                                
+                                                                                003260                                                                
+       01  W-LARGO-LINEA            PIC S9(09)  COMP VALUE +120.                003270                                                                
+                                                                                003280                                                                
+      *-------------------                                                      003290                                                                
+       PROCEDURE DIVISION.                                                      003300                                                                
+      *-------------------                                                      003310                                                                
+           PERFORM 100-INICIO                                                   003320                                                                
+           PERFORM 200-PROCESO                                                  003330                                                                
+           PERFORM 400-FIN.                                                     003340                                                                
+                                                                                003350                                                                
+       100-INICIO.                                                              003360                                                                
+      *-----------                                                              003370                                                                
+           ACCEPT HORA-SYS  FROM TIME                                           003380                                                                
+           STRING HRA-SYS-HH CT-2PTS HRA-SYS-MM CT-2PTS                         003390                                                                
+                  HRA-SYS-SS CT-SPACE10                                         003400                                                                
+           DELIMITED BY SIZE INTO WS-HORA.                                      003410                                                                
+           ACCEPT WS-FECHA                                                      003420                                                                
+           STRING WS-DIA CT-GUION WS-MES CT-GUION WS-ANO CT-SPACE10             003430                                                                
+           DELIMITED BY SIZE INTO WS-FECHA-I                                    003440                                                                
+           PERFORM 110-VALIDA-FECHA                                             003450                                                                
+           MOVE WS-FECHA TO WS-FECHA-D22                                        003460                                                                
+           ACCEPT WS-FECHA                                                      003470                                                                
+           PERFORM 110-VALIDA-FECHA                                             003480                                                                
+           MOVE WS-FECHA TO WS-FECHA-D02                                        003490                                                                
+           PERFORM 115-OPEN-ARCHIVOS                                            003500                                                                
+           PERFORM 320-MOVER-CABECERA                                           003510                                                                
+           PERFORM 350-MOVER-CABECERA-LISTOBCO.                                 003520                                                                
+                                                                                003530                                                                
+       110-VALIDA-FECHA.                                                        003540                                                                
+      *-----------------                                                        003550                                                                
+           IF WS-FECHA NOT NUMERIC                                              003560                                                                
+              DISPLAY ' =============== E R R O R ================ '            003570                                                                
+              DISPLAY '  PARAMETRO ERRONEO FECHA : ' WS-FECHA                   003580                                                                
+              DISPLAY ' ==========================================='            003590                                                                
+              PERFORM 450-CANCELA-PROG                                          003600                                                                
+           END-IF.                                                              003610                                                                
+           MOVE SPACES TO INDICADOR                                             003620                                                                
+           MOVE WS-ANO TO RUT-ANO                                               003630                                                                
+           MOVE WS-MES TO RUT-MES                                               003640                                                                
+           MOVE WS-DIA TO RUT-DIA                                               003650                                                                
+           CALL  CT-TEGR006X  USING FECHA INDICADOR                             003660                                                                
+           IF INDICADOR NOT = SPACES                                            003670                                                                
+              DISPLAY ' =============== E R R O R ================ '            003680                                                                
+              DISPLAY '  PARAMETRO ERRONEO FECHA : ' WS-FECHA                   003690                                                                
+              DISPLAY ' ==========================================='            003700                                                                
+              PERFORM 450-CANCELA-PROG                                          003710                                                                
+           END-IF.                                                              003720                                                                
+                                                                                003730                                                                
+       115-OPEN-ARCHIVOS.                                                       003740                                                                
+      *------------------                                                       003750                                                                
+           OPEN INPUT  ENTRADA                                                  003760                                                                
+           IF  NOT FS-ENT-OK                                                    003770                                                                
+              DISPLAY ' ======= E R R O R ========= '                           003780                                                                
+              DISPLAY ' PROBLEMAS AL ABRIR ARCHIVOS '                           003790                                                                
+              DISPLAY ' FS-ENT   : ' FS-ENT                                     003800                                                                
+              DISPLAY ' FS-SAL   : ' FS-SAL                                     003810                                                                
+              DISPLAY ' FS-LIST  : ' FS-LIST                                    003820                                                                
+              DISPLAY ' FS-INT   : ' FS-INT                                     003830                                                                
+              DISPLAY ' =========================== '                           003840                                                                
+              SET SW-FLAG-CLOSE-ENT-NO       TO TRUE                            003850                                                                
+              PERFORM 450-CANCELA-PROG                                          003860                                                                
+           ELSE                                                                 003870                                                                
+              SET SW-FLAG-CLOSE-ENT-SI       TO TRUE                            003880                                                                
+           END-IF                                                               003890                                                                
+                                                                                003900                                                                
+           OPEN OUTPUT SALIDA                                                   003910                                                                
+           IF  NOT FS-SAL-OK                                                    003920                                                                
+              DISPLAY ' ======= E R R O R ========= '                           003930                                                                
+              DISPLAY ' PROBLEMAS AL ABRIR ARCHIVOS '                           003940                                                                
+              DISPLAY ' FS-ENT   : ' FS-ENT                                     003950                                                                
+              DISPLAY ' FS-SAL   : ' FS-SAL                                     003960                                                                
+              DISPLAY ' FS-LIST  : ' FS-LIST                                    003970                                                                
+              DISPLAY ' FS-INT   : ' FS-INT                                     003980                                                                
+              DISPLAY ' =========================== '                           003990                                                                
+              SET SW-FLAG-CLOSE-SAL-NO       TO TRUE                            004000                                                                
+              PERFORM 450-CANCELA-PROG                                          004010                                                                
+           ELSE                                                                 004020                                                                
+              SET SW-FLAG-CLOSE-SAL-SI       TO TRUE                            004030                                                                
+           END-IF                                                               004040                                                                
+                                                                                004050                                                                
+           OPEN OUTPUT LISTOBCO                                                 004060                                                                
+           IF  NOT FS-LIST-OK                                                   004070                                                                
+              DISPLAY ' ======= E R R O R ========= '                           004080                                                                
+              DISPLAY ' PROBLEMAS AL ABRIR ARCHIVOS '                           004090                                                                
+              DISPLAY ' FS-ENT   : ' FS-ENT                                     004100                                                                
+              DISPLAY ' FS-SAL   : ' FS-SAL                                     004110                                                                
+              DISPLAY ' FS-LIST  : ' FS-LIST                                    004120                                                                
+              DISPLAY ' FS-INT   : ' FS-INT                                     004130                                                                
+              DISPLAY ' =========================== '                           004140                                                                
+              SET SW-FLAG-CLOSE-LIS-NO       TO TRUE                            004150                                                                
+              PERFORM 450-CANCELA-PROG                                          004160                                                                
+           ELSE                                                                 004170                                                                
+              SET SW-FLAG-CLOSE-LIS-SI       TO TRUE                            004180                                                                
+           END-IF                                                               004190                                                                
+                                                                                004200                                                                
+           OPEN OUTPUT INTERFAZ                                                 004210                                                                
+           IF  NOT FS-INT-OK                                                    004220                                                                
+              DISPLAY ' ======= E R R O R ========= '                           004230                                                                
+              DISPLAY ' PROBLEMAS AL ABRIR ARCHIVOS '                           004240                                                                
+              DISPLAY ' FS-ENT   : ' FS-ENT                                     004250                                                                
+              DISPLAY ' FS-SAL   : ' FS-SAL                                     004260                                                                
+              DISPLAY ' FS-LIST  : ' FS-LIST                                    004270                                                                
+              DISPLAY ' FS-INT   : ' FS-INT                                     004280                                                                
+              DISPLAY ' =========================== '                           004290                                                                
+              SET SW-FLAG-CLOSE-INT-NO       TO TRUE                            004300                                                                
+              PERFORM 450-CANCELA-PROG                                          004310                                                                
+           ELSE                                                                 004320                                                                
+              SET SW-FLAG-CLOSE-INT-SI       TO TRUE                            004330                                                                
+           END-IF                                                               004340                                                                
+                                                                                004350                                                                
+           PERFORM 210-LEE-ENTRADA.                                             004360                                                                
+           IF  FS-ENT-EOF                                                       004370                                                                
+               DISPLAY ' ======= A V I S O ========= '                          004380                                                                
+               DISPLAY ' ARCHIVO DE ENTRADA VACIO    '                          004390                                                                
+               DISPLAY '    VALIDO PARA PROCESO      '                          004400                                                                
+               DISPLAY ' =========================== '                          004410                                                                
+           END-IF.                                                              004420                                                                
+                                                                                004430                                                                
+       200-PROCESO.                                                             004440                                                                
+      *------------                                                             004450                                                                
+           PERFORM 220-PROCESO-CENTRAL UNTIL FS-ENT-EOF                         004460                                                                
+           IF WS-NUM-CVN-ANT NOT = ZEROES AND SW-BCO-OK                         004470                                                                
+              PERFORM 340-MOVER-SALIDA                                          004480                                                                
+              ADD  CT-1          TO WS-CONT-CNT-REG                             004490                                                                
+              PERFORM 380-MOVER-LISTADO                                         004500                                                                
+              PERFORM 370-GRABA-LISTOBCO                                        004510                                                                
+              ADD WS-MTO-ACC     TO WS-CONT-TOT-MTO                             004520                                                                
+           END-IF                                                               004530                                                                
+           PERFORM 330-MOVER-CONTROL.                                           004540                                                                
+                                                                                004550                                                                
+       220-PROCESO-CENTRAL.                                                     004560                                                                
+      *--------------------                                                     004570                                                                
+           IF MOV-NUM-CVN NOT = WS-NUM-CVN-ANT                                  004580                                                                
+              IF WS-NUM-CVN-ANT NOT = ZEROES AND SW-BCO-OK                      004590                                                                
+                 PERFORM 340-MOVER-SALIDA                                       004600                                                                
+                 ADD  CT-1          TO WS-CONT-CNT-REG                          004610                                                                
+                 PERFORM 380-MOVER-LISTADO                                      004620                                                                
+                 PERFORM 370-GRABA-LISTOBCO                                     004630                                                                
+                 ADD WS-MTO-ACC     TO WS-CONT-TOT-MTO                          004640                                                                
+                 MOVE ZEROES        TO WS-MTO-ACC                               004650                                                                
+              END-IF                                                            004660                                                                
+              MOVE MOV-NUM-CVN(CT-3:CT-3)   TO RCJ-COD-ARA-R                    004670                                                                
+              MOVE MOV-NUM-CVN(CT-6:CT-2)   TO RCJ-TIP-SER-R                    004680                                                                
+              MOVE MOV-NUM-CVN(CT-8:CT-5)   TO RCJ-NUM-CRV-R                    004690                                                                
+              PERFORM 230-BUSCA-RCJ                                             004700                                                                
+              MOVE MOV-NUM-CVN TO WS-NUM-CVN-ANT                                004710                                                                
+           END-IF                                                               004720                                                                
+           PERFORM 205-VALIDA-BCO-R                                             004730                                                                
+           PERFORM 210-LEE-ENTRADA.                                             004740                                                                
+                                                                                004750                                                                
+       205-VALIDA-BCO-R.                                                        004760                                                                
+      *-----------------                                                        004770                                                                
+           MOVE RCJ-COD-BCO-R TO WS-RCJ-COD-BCO                                 004780                                                                
+           IF WS-RCJ-COD-BCO         NOT = CT-012                               004790                                                                
+              AND WS-RCJ-COD-BCO     NOT = ZEROES                               004800                                                                
+              AND WS-RCJ-COD-BCO-R   NOT = SPACES                               004810                                                                
+              AND WS-RCJ-COD-BCO-R   NOT = LOW-VALUE                            004820                                                                
+              MOVE MOV-NUM-CVN       TO  WS-NUM-CVN                             004830                                                                
+              IF NOT WS-NUM-CVN-CTB-NOK                                         004840                                                                
+                 PERFORM 250-MOVER-INTERFAZ                                     004850                                                                
+                 PERFORM 360-GRABA-INTERFAZ                                     004860                                                                
+              END-IF                                                            004870                                                                
+              ADD  MOV-MTO-TOT       TO WS-MTO-ACC                              004880                                                                
+              MOVE CT-OK  TO SW-BCO                                             004890                                                                
+           ELSE                                                                 004900                                                                
+              MOVE CT-NOT TO SW-BCO                                             004910                                                                
+           END-IF.                                                              004920                                                                
+                                                                                004930                                                                
+       210-LEE-ENTRADA.                                                         004940                                                                
+      *----------------                                                         004950                                                                
+           READ ENTRADA INTO REG-RPCMOV                                         004960                                                                
+           IF FS-ENT-OK                                                         004970                                                                
+              ADD CT-1  TO WS-CONT-LEI-ENT                                      004980                                                                
+           ELSE                                                                 004990                                                                
+              IF NOT FS-ENT-EOF                                                 005000                                                                
+                 DISPLAY '====== E R R O R ========= '                          005010                                                                
+                 DISPLAY ' PROBLEMAS AL LEER ARCHIVO '                          005020                                                                
+                 DISPLAY ' ENTRADA   : ' FS-ENT                                 005030                                                                
+                 DISPLAY '========================== '                          005040                                                                
+                 PERFORM 450-CANCELA-PROG                                       005050                                                                
+              END-IF                                                            005060                                                                
+           END-IF.                                                              005070                                                                
+                                                                                005080                                                                
+       220-BUSCA-IFC.                                                           005090                                                                
+      *--------------                                                           005100                                                                
+           EXEC SQL SELECT                                                      005110                                                                
+                          IFC_RUT_EMP,                                          005120                                                                
+                          IFC_DV_RUT_EMP,                                       005130                                                                
+                          IFC_NOM_CNV                                           005140                                                                
+                    INTO  :IFC-RUT-EMP-R,                                       005150                                                                
+                          :IFC-DV-RUT-EMP-R,                                    005160                                                                
+                          :IFC-NOM-CNV-R                                        005170                                                                
+                    FROM  T123IFC                                               005180                                                                
+                    WHERE IFC_COD_ARA = :IFC-COD-ARA-R                          005190                                                                
+                      AND IFC_TIP_SER = :IFC-TIP-SER-R                          005200                                                                
+                      AND IFC_NUM_CRV = :IFC-NUM-CRV-R                          005210                                                                
+                    WITH UR                                                     005220                                                                
+           END-EXEC.                                                            005230                                                                
+           EVALUATE SQLCODE                                                     005240                                                                
+              WHEN ZEROES                                                       005250                                                                
+                 SET WS-IFC-OK TO TRUE                                          005260                                                                
+              WHEN CT-100                                                       005270                                                                
+                 SET WS-IFC-NO TO TRUE                                          005280                                                                
+              WHEN OTHER                                                        005290                                                                
+                 MOVE SQLCODE TO SQLCODE-E                                      005300                                                                
+                 DISPLAY ' ======== E R R O R ======= '                         005310                                                                
+                 DISPLAY ' PROBLEMAS TABLA 123IFC '                             005320                                                                
+                 DISPLAY ' OPERACION   :  SELECT'                               005330                                                                
+                 DISPLAY ' CONVENIO    : '                                      005340                                                                
+                         IFC-COD-ARA-R IFC-TIP-SER-R IFC-NUM-CRV-R              005350                                                                
+                 DISPLAY ' SQLCODE     : ' SQLCODE-E                            005360                                                                
+                 DISPLAY ' ========================== '                         005370                                                                
+                 CALL CT-DSNTIAR USING SQLCA W-MENSAJE-ERR W-LARGO-LINEA        005380                                                                
+                    DISPLAY W-MENSAJE-ERR                                       005390                                                                
+                    DISPLAY '*************************************'             005400                                                                
+                 PERFORM 450-CANCELA-PROG                                       005410                                                                
+           END-EVALUATE.                                                        005420                                                                
+                                                                                005430                                                                
+       230-BUSCA-RCJ.                                                           005440                                                                
+      *--------------                                                           005450                                                                
+           EXEC SQL                                                             005460                                                                
+                SELECT RCJ_RUT_BNF,                                             005470                                                                
+                       RCJ_DV_RUT_BNF,                                          005480                                                                
+                       RCJ_COD_BCO,                                             005490                                                                
+                       RCJ_CTA_ABN_OBC                                          005500                                                                
+                INTO  :RCJ-RUT-BNF-R,                                           005510                                                                
+                      :RCJ-DV-RUT-BNF-R,                                        005520                                                                
+                      :RCJ-COD-BCO-R,                                           005530                                                                
+                      :RCJ-CTA-ABN-OBC-R                                        005540                                                                
+                FROM  T123RCJ                                                   005550                                                                
+                WHERE  RCJ_COD_ARA = :RCJ-COD-ARA-R AND                         005560                                                                
+                       RCJ_TIP_SER = :RCJ-TIP-SER-R AND                         005570                                                                
+                       RCJ_NUM_CRV = :RCJ-NUM-CRV-R                             005580                                                                
+                WITH UR                                                         005590                                                                
+           END-EXEC.                                                            005600                                                                
+           EVALUATE SQLCODE                                                     005610                                                                
+              WHEN ZEROES                                                       005620                                                                
+                 SET WS-RCJ-OK TO TRUE                                          005630                                                                
+              WHEN CT-100                                                       005640                                                                
+                 SET WS-RCJ-NO TO TRUE                                          005650                                                                
+              WHEN OTHER                                                        005660                                                                
+                 MOVE SQLCODE TO SQLCODE-E                                      005670                                                                
+                 DISPLAY ' ======== E R R O R ======= '                         005680                                                                
+                 DISPLAY ' PROBLEMAS TABLA 123RCJ '                             005690                                                                
+                 DISPLAY ' OPERACION   :  SELECT'                               005700                                                                
+                 DISPLAY ' CONVENIO    : '                                      005710                                                                
+                         RCJ-COD-ARA-R RCJ-TIP-SER-R RCJ-NUM-CRV-R              005720                                                                
+                 DISPLAY ' SQLCODE     : ' SQLCODE-E                            005730                                                                
+                 DISPLAY ' ========================== '                         005740                                                                
+                 CALL CT-DSNTIAR USING SQLCA W-MENSAJE-ERR W-LARGO-LINEA        005750                                                                
+                    DISPLAY W-MENSAJE-ERR                                       005760                                                                
+                    DISPLAY '*************************************'             005770                                                                
+                 PERFORM 450-CANCELA-PROG                                       005780                                                                
+           END-EVALUATE.                                                        005790                                                                
+                                                                                005800                                                                
+       250-MOVER-INTERFAZ.                                                      005810                                                                
+      *------------------                                                       005820                                                                
+           INITIALIZE                 REG-INTERFAZ                              005830                                                                
+           MOVE CT-RPC              TO MVT-COD-APL                              005840                                                                
+           MOVE CT-REC-OBCO         TO MVT-COD-PDCTO                            005850                                                                
+           MOVE CT-ABONO            TO MVT-COD-EVENTO                           005860                                                                
+           MOVE SPACES              TO BCC-084-REG                              005870                                                                
+           MOVE CT-SPM              TO BC84-COD-CRV                             005880                                                                
+           CALL CT-SPM2BTG0 USING BCC-084-REG                                   005890                                                                
+           IF BC84-COD-RET NOT = SPACES AND NOT = ZEROS                         005900                                                                
+              DISPLAY '*******************************************'             005910                                                                
+              DISPLAY '*     ERROR EN RUTINA FOLIO : SPM2BTG0'                  005920                                                                
+              DISPLAY '* CODIGO RETORNO : ' BC84-COD-RET                        005930                                                                
+              DISPLAY '* REGISTRO : ' BCC-084-REG                               005940                                                                
+              DISPLAY '*******************************************'             005950                                                                
+              PERFORM 450-CANCELA-PROG                                          005960                                                                
+           END-IF                                                               005970                                                                
+           MOVE BC84-NUM-CRV             TO MVT-CRV                             005980                                                                
+           MOVE CT-UNO                   TO MVT-CRV-LINEA                       005990                                                                
+           MOVE CT-MONTO                 TO MVT-COD-CON                         006000                                                                
+           MOVE MOV-MTO-TOT              TO MVT-MONTO                           006010                                                                
+           MOVE WS-FECHA-D22             TO MVT-FECHA-CONTABLE                  006020                                                                
+           MOVE WS-FECHA-D22             TO MVT-FECHA-MOVTO                     006030                                                                
+           MOVE MOV-NUM-CVN(CT-2:CT-11)  TO MVT-NRO-OPER                        006040                                                                
+           MOVE CT-999                   TO MVT-COD-MONEDA                      006050                                                                
+           MOVE MOV-OFI-REC(CT-2:CT-3)   TO MVT-OFI-ORIGEN                      006060                                                                
+           MOVE CT-001                   TO MVT-OFI-DESTINO                     006070                                                                
+           MOVE CT-BANCO                 TO MVT-COD-EMPRESA                     006080                                                                
+           MOVE CT-NO                    TO MVT-IDR-REVERSA                     006090                                                                
+           MOVE SPACES                   TO MVT-LOGICOS                         006100                                                                
+           MOVE CT-CANAL                 TO MVT-COD-CON-LGC (CT-1)              006110                                                                
+           MOVE MOV-CANAL                TO WS-CANAL                            006120                                                                
+           MOVE WS-CANAL-GR              TO MVT-VALOR-CON-LGC (CT-1)            006130                                                                
+           IF NOT ( MOV-CANAL = CT-000 OR CT-002 OR CT-018 OR CT-024 )          006140                                                                
+              DISPLAY 'ERROR EN PROGRAMA RPCL013'                               006150                                                                
+              DISPLAY 'CANAL NO IDENTIFICADO EN MATRIZ CONTABLE: '              006160                                                                
+                       MOV-CANAL                                                006170                                                                
+              PERFORM 450-CANCELA-PROG                                          006180                                                                
+           END-IF                                                               006190                                                                
+           MOVE RCJ-CTA-ABN-OBC-R  TO MVT-CTA-ABO.                              006200                                                                
+                                                                                006210                                                                
+       300-GRABA-SALIDA.                                                        006220                                                                
+      *-----------------                                                        006230                                                                
+           WRITE REG-SALIDA.                                                    006240                                                                
+           IF FS-SAL-OK                                                         006250                                                                
+              ADD CT-1  TO WS-CONT-GRA-SAL                                      006260                                                                
+           ELSE                                                                 006270                                                                
+              DISPLAY '*****************************'                           006280                                                                
+              DISPLAY 'ERROR AL GRABAR SALIDA :' FS-SAL                         006290                                                                
+              DISPLAY '*****************************'                           006300                                                                
+              PERFORM 450-CANCELA-PROG                                          006310                                                                
+           END-IF.                                                              006320                                                                
+                                                                                006330                                                                
+       320-MOVER-CABECERA.                                                      006340                                                                
+      *-------------------                                                      006350                                                                
+           INITIALIZE REG-REGPAG1                                               006360                                                                
+           MOVE CT-1                TO PAG1-TPO-REG                             006370                                                                
+           MOVE CT-RUT-EMP          TO PAG1-NRUT-EMP                            006380                                                                
+           MOVE CT-DV-EMP           TO PAG1-DRUT-EMP                            006390                                                                
+           MOVE CT-COD-CVN          TO PAG1-COD-CONV                            006400                                                                
+           MOVE WS-FECHA-D22        TO PAG1-FEC-ENV                             006410                                                                
+           MOVE WS-FECHA-D02        TO PAG1-FEC-PRO                             006420                                                                
+           MOVE HORA-SYS(CT-1:CT-6) TO PAG1-HRA-ENV                             006430                                                                
+           MOVE ZEROES              TO PAG1-CGO-OPE-CCA                         006440                                                                
+           MOVE ZEROES              TO PAG1-NOMINA                              006450                                                                
+           MOVE REG-REGPAG1         TO REG-SALIDA                               006460                                                                
+           PERFORM 300-GRABA-SALIDA.                                            006470                                                                
+                                                                                006480                                                                
+       330-MOVER-CONTROL.                                                       006490                                                                
+      *------------------                                                       006500                                                                
+           INITIALIZE REG-REGPAG3                                               006510                                                                
+           MOVE CT-3            TO PAG3-TPO-REG                                 006520                                                                
+           MOVE WS-CONT-TOT-MTO TO PAG3-MTO-TOT                                 006530                                                                
+           MOVE WS-CONT-CNT-REG TO PAG3-CNT-REG                                 006540                                                                
+           MOVE REG-REGPAG3     TO REG-SALIDA                                   006550                                                                
+           PERFORM 300-GRABA-SALIDA.                                            006560                                                                
+                                                                                006570                                                                
+       340-MOVER-SALIDA.                                                        006580                                                                
+      *-----------------                                                        006590                                                                
+           INITIALIZE REG-REGPAG2                                               006600                                                                
+           MOVE CT-2          TO PAG2-TPO-REG                                   006610                                                                
+           MOVE WS-COD-ARA    TO IFC-COD-ARA-R                                  006620                                                                
+           MOVE WS-TIP-SER    TO IFC-TIP-SER-R                                  006630                                                                
+           MOVE WS-NUM-CRV    TO IFC-NUM-CRV-R                                  006640                                                                
+           PERFORM 220-BUSCA-IFC                                                006650                                                                
+           IF WS-IFC-NO                                                         006660                                                                
+              DISPLAY '*****************************'                           006670                                                                
+              DISPLAY 'CONVENIO NO EXISTE EN TABLA : ' WS-NUM-CVN-ANT           006680                                                                
+              DISPLAY '*****************************'                           006690                                                                
+              PERFORM 450-CANCELA-PROG                                          006700                                                                
+           END-IF                                                               006710                                                                
+           MOVE IFC-NOM-CNV-R        TO PAG2-NOM-BENEF                          006720                                                                
+           IF WS-RCJ-OK                                                         006730                                                                
+              MOVE RCJ-CTA-ABN-OBC-R TO PAG2-CTA                                006740                                                                
+              MOVE RCJ-COD-BCO-R     TO PAG2-BCO                                006750                                                                
+              MOVE RCJ-RUT-BNF-R     TO PAG2-NRUT-BENEF                         006760                                                                
+              MOVE RCJ-DV-RUT-BNF-R  TO PAG2-DRUT-BENEF                         006770                                                                
+           ELSE                                                                 006780                                                                
+              DISPLAY '*****************************'                           006790                                                                
+              DISPLAY 'CONVENIO NO EXISTE EN RCJ CVN:' WS-NUM-CVN-ANT           006800                                                                
+              DISPLAY '*****************************'                           006810                                                                
+              PERFORM 450-CANCELA-PROG                                          006820                                                                
+           END-IF                                                               006830                                                                
+           MOVE ZEROES               TO PAG2-NUM-FAC                            006840                                                                
+           MOVE CT-1                 TO PAG2-TPO-MVT                            006850                                                                
+           MOVE ZEROES               TO PAG2-OFI                                006860                                                                
+           MOVE ZEROES               TO PAG2-SEC-FIN                            006870                                                                
+           MOVE WS-MTO-ACC           TO PAG2-MTO                                006880                                                                
+           MOVE ZEROES               TO PAG2-CGO-EMP                            006890                                                                
+           MOVE ZEROES               TO PAG2-CTA-EMP                            006900                                                                
+           MOVE SPACES               TO PAG2-DIR                                006910                                                                
+           MOVE SPACES               TO PAG2-GLS                                006920                                                                
+           MOVE ZEROES               TO PAG2-IDENTIF                            006930                                                                
+           MOVE SPACES               TO PAG2-RESTO                              006940                                                                
+           MOVE ZEROES               TO PAG2-NUM-SEC                            006950                                                                
+           MOVE REG-REGPAG2          TO REG-SALIDA                              006960                                                                
+           PERFORM 300-GRABA-SALIDA.                                            006970                                                                
+                                                                                006980                                                                
+       350-MOVER-CABECERA-LISTOBCO.                                             006990                                                                
+      *---------------------------                                              007000                                                                
+           MOVE WS-FECHA-I           TO WS-FECHA-LIST                           007010                                                                
+           MOVE WS-HORA              TO WS-SYS-LIST                             007020                                                                
+           STRING WS-DIA CT-GUION WS-MES CT-GUION WS-ANO CT-SPACE10             007030                                                                
+           DELIMITED BY SIZE INTO WS-FECHA-ABONO.                               007040                                                                
+           MOVE WS-FECHA-ABONO       TO WS-FECHA-D02-LIST                       007050                                                                
+           MOVE WS-TITULOS-1         TO REG-LISTOBCO                            007060                                                                
+           PERFORM 370-GRABA-LISTOBCO                                           007070                                                                
+           MOVE WS-TITULOS-2         TO REG-LISTOBCO                            007080                                                                
+           PERFORM 370-GRABA-LISTOBCO                                           007090                                                                
+           MOVE WS-TITULOS-3         TO REG-LISTOBCO                            007100                                                                
+           PERFORM 370-GRABA-LISTOBCO                                           007110                                                                
+           MOVE WS-ESPACIO           TO REG-LISTOBCO                            007120                                                                
+           PERFORM 370-GRABA-LISTOBCO                                           007130                                                                
+           MOVE WS-TITULOS-4         TO REG-LISTOBCO                            007140                                                                
+           PERFORM 370-GRABA-LISTOBCO                                           007150                                                                
+           MOVE WS-LINEA             TO REG-LISTOBCO                            007160                                                                
+           PERFORM 370-GRABA-LISTOBCO.                                          007170                                                                
+                                                                                007180                                                                
+       360-GRABA-INTERFAZ.                                                      007190                                                                
+      *------------------                                                       007200                                                                
+      * AEV01 INICIO                                                            007210                                                                
+      *    WRITE INTERFAZ-REG                                                   007220                                                                
+           WRITE INTERFAZ-REG FROM REG-INTERFAZ                                 007230                                                                
+      * AEV01 FIN                                                               007240                                                                
+           IF FS-INT-OK                                                         007250                                                                
+              ADD CT-1  TO WS-CONT-GRA-INT                                      007260                                                                
+           ELSE                                                                 007270                                                                
+              DISPLAY '*****************************'                           007280                                                                
+              DISPLAY 'ERROR AL GRABAR INTERFAZ:' FS-INT                        007290                                                                
+              DISPLAY '*****************************'                           007300                                                                
+              PERFORM 450-CANCELA-PROG                                          007310                                                                
+           END-IF.                                                              007320                                                                
+                                                                                007330                                                                
+       370-GRABA-LISTOBCO.                                                      007340                                                                
+      *------------------                                                       007350                                                                
+           WRITE REG-LISTOBCO                                                   007360                                                                
+           IF FS-LIST-OK                                                        007370                                                                
+              ADD CT-1  TO WS-CONT-GRA-LIST                                     007380                                                                
+           ELSE                                                                 007390                                                                
+              DISPLAY '*****************************'                           007400                                                                
+              DISPLAY 'ERROR AL GRABAR LISTADO :' FS-LIST                       007410                                                                
+              DISPLAY '*****************************'                           007420                                                                
+              PERFORM 450-CANCELA-PROG                                          007430                                                                
+           END-IF.                                                              007440                                                                
+                                                                                007450                                                                
+       380-MOVER-LISTADO.                                                       007460                                                                
+      *-----------------                                                        007470                                                                
+           MOVE WS-NUM-CVN-ANT    TO WS-NUM-CON                                 007480                                                                
+           MOVE IFC-RUT-EMP-R     TO WS-IFC-RT                                  007490                                                                
+           MOVE IFC-DV-RUT-EMP-R  TO WS-IFC-RV                                  007500                                                                
+           MOVE IFC-NOM-CNV-R     TO WS-IFC-CNV                                 007510                                                                
+           MOVE WS-EMP            TO WS-EMPRESA                                 007520                                                                
+           MOVE RCJ-RUT-BNF-R     TO WS-RT-BNF                                  007530                                                                
+           MOVE RCJ-DV-RUT-BNF-R  TO WS-RV-BNF                                  007540                                                                
+           MOVE WS-RUT-BNF        TO WS-RUT-BENE                                007550                                                                
+           MOVE WS-MTO-ACC        TO WS-MONTO                                   007560                                                                
+           MOVE RCJ-COD-BCO-R     TO WS-COD-BCO                                 007570                                                                
+           MOVE RCJ-CTA-ABN-OBC-R TO WS-CTA-ABN                                 007580                                                                
+           MOVE WS-CTA            TO WS-CUENTA                                  007590                                                                
+           MOVE WS-VALORES        TO REG-LISTOBCO.                              007600                                                                
+                                                                                007610                                                                
+       400-FIN.                                                                 007620                                                                
+      *--------                                                                 007630                                                                
+           IF SW-FLAG1 = CT-SI OR SW-FLAG2 = CT-SI OR                           007640                                                                
+              SW-FLAG3 = CT-SI OR SW-FLAG4 = CT-SI                              007650                                                                
+                 PERFORM 420-CIERRA-ARCHIVO                                     007660                                                                
+           END-IF                                                               007670                                                                
+           PERFORM 440-TOTAL-PROCESO                                            007680                                                                
+           STOP RUN.                                                            007690                                                                
+                                                                                007700                                                                
+       420-CIERRA-ARCHIVO.                                                      007710                                                                
+      *-------------------                                                      007720                                                                
+           IF SW-FLAG-CLOSE-ENT-SI                                              007730                                                                
+              CLOSE ENTRADA                                                     007740                                                                
+              IF NOT FS-ENT-OK                                                  007750                                                                
+                 DISPLAY ' ======= E R R O R ========= '                        007760                                                                
+                 DISPLAY ' PROBLEMAS AL CERRAR ARCHIVOS '                       007770                                                                
+                 DISPLAY ' FS-ENT  : ' FS-ENT                                   007780                                                                
+                 DISPLAY ' FS-SAL  : ' FS-SAL                                   007790                                                                
+                 DISPLAY ' FS-INT  : ' FS-INT                                   007800                                                                
+                 DISPLAY ' FS-LIST : ' FS-LIST                                  007810                                                                
+                 DISPLAY ' =========================== '                        007820                                                                
+                 SET SW-FLAG-CLOSE-ENT-NO  TO TRUE                              007830                                                                
+                 PERFORM 450-CANCELA-PROG                                       007840                                                                
+              ELSE                                                              007850                                                                
+                 SET SW-FLAG-CLOSE-ENT-NO  TO TRUE                              007860                                                                
+              END-IF                                                            007870                                                                
+           END-IF                                                               007880                                                                
+                                                                                007890                                                                
+           IF SW-FLAG-CLOSE-SAL-SI                                              007900                                                                
+              CLOSE SALIDA                                                      007910                                                                
+              IF NOT FS-SAL-OK                                                  007920                                                                
+                 DISPLAY ' ======= E R R O R ========= '                        007930                                                                
+                 DISPLAY ' PROBLEMAS AL CERRAR ARCHIVOS '                       007940                                                                
+                 DISPLAY ' FS-ENT  : ' FS-ENT                                   007950                                                                
+                 DISPLAY ' FS-SAL  : ' FS-SAL                                   007960                                                                
+                 DISPLAY ' FS-INT  : ' FS-INT                                   007970                                                                
+                 DISPLAY ' FS-LIST : ' FS-LIST                                  007980                                                                
+                 DISPLAY ' =========================== '                        007990                                                                
+                 SET SW-FLAG-CLOSE-SAL-NO  TO TRUE                              008000                                                                
+                 PERFORM 450-CANCELA-PROG                                       008010                                                                
+              ELSE                                                              008020                                                                
+                 SET SW-FLAG-CLOSE-SAL-NO  TO TRUE                              008030                                                                
+              END-IF                                                            008040                                                                
+           END-IF                                                               008050                                                                
+                                                                                008060                                                                
+           IF SW-FLAG-CLOSE-INT-SI                                              008070                                                                
+              CLOSE INTERFAZ                                                    008080                                                                
+              IF NOT FS-INT-OK                                                  008090                                                                
+                 DISPLAY ' ======= E R R O R ========= '                        008100                                                                
+                 DISPLAY ' PROBLEMAS AL CERRAR ARCHIVOS '                       008110                                                                
+                 DISPLAY ' FS-ENT  : ' FS-ENT                                   008120                                                                
+                 DISPLAY ' FS-SAL  : ' FS-SAL                                   008130                                                                
+                 DISPLAY ' FS-INT  : ' FS-INT                                   008140                                                                
+                 DISPLAY ' FS-LIST : ' FS-LIST                                  008150                                                                
+                 DISPLAY ' =========================== '                        008160                                                                
+                 SET SW-FLAG-CLOSE-INT-NO  TO TRUE                              008170                                                                
+                 PERFORM 450-CANCELA-PROG                                       008180                                                                
+              ELSE                                                              008190                                                                
+                 SET SW-FLAG-CLOSE-INT-NO  TO TRUE                              008200                                                                
+              END-IF                                                            008210                                                                
+           END-IF                                                               008220                                                                
+                                                                                008230                                                                
+           IF SW-FLAG-CLOSE-LIS-SI                                              008240                                                                
+              CLOSE LISTOBCO                                                    008250                                                                
+              IF NOT FS-LIST-OK                                                 008260                                                                
+                 DISPLAY ' ======= E R R O R ========= '                        008270                                                                
+                 DISPLAY ' PROBLEMAS AL CERRAR ARCHIVOS '                       008280                                                                
+                 DISPLAY ' FS-ENT  : ' FS-ENT                                   008290                                                                
+                 DISPLAY ' FS-SAL  : ' FS-SAL                                   008300                                                                
+                 DISPLAY ' FS-INT  : ' FS-INT                                   008310                                                                
+                 DISPLAY ' FS-LIST : ' FS-LIST                                  008320                                                                
+                 DISPLAY ' =========================== '                        008330                                                                
+                 SET SW-FLAG-CLOSE-LIS-NO  TO TRUE                              008340                                                                
+                 PERFORM 450-CANCELA-PROG                                       008350                                                                
+              ELSE                                                              008360                                                                
+                 SET SW-FLAG-CLOSE-LIS-NO  TO TRUE                              008370                                                                
+              END-IF                                                            008380                                                                
+           END-IF.                                                              008390                                                                
+                                                                                008400                                                                
+       440-TOTAL-PROCESO.                                                       008410                                                                
+      *------------------                                                       008420                                                                
+           DISPLAY ' ======= ESTADISTICAS PROGRAMA RPCL013 ========'            008430                                                                
+           DISPLAY ' REGISTROS LEIDOS           : ' WS-CONT-LEI-ENT             008440                                                                
+           DISPLAY ' TOTAL MONTO                : ' WS-CONT-TOT-MTO             008450                                                                
+           DISPLAY ' REGISTROS DETALLE          : ' WS-CONT-CNT-REG             008460                                                                
+           DISPLAY ' REGISTROS GRABADOS SALIDA  : ' WS-CONT-GRA-SAL             008470                                                                
+           DISPLAY ' REGISTROS GRABADOS INTERFAZ: ' WS-CONT-GRA-INT             008480                                                                
+           DISPLAY ' REGISTROS GRABADOS LISTADO : ' WS-CONT-GRA-LIST            008490                                                                
+           DISPLAY ' =============================================='.           008500                                                                
+                                                                                008510                                                                
+       450-CANCELA-PROG.                                                        008520                                                                
+      *-------------                                                            008530                                                                
+           DISPLAY '*************************************************'          008540                                                                
+           DISPLAY '**************  PROGRAMA CANCELADO  *************'          008550                                                                
+           DISPLAY '*************************************************'          008560                                                                
+           MOVE CT-16 TO RETURN-CODE                                            008570                                                                
+           PERFORM 400-FIN.                                                     008580                                                                

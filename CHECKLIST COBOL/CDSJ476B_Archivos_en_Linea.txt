@@ -1,0 +1,101 @@
+//CDSJ476B  JOB  ,,CLASS=A,MSGCLASS=0                                                               
+//*--------------------------------------------------------------------                             
+//*MODIFICACION     OBJETIVO                          RESPONSABLE                                   
+//*03.01.2005       MODIF,PARA REPROCESO              SOLEDAD QUILODRAN.                            
+//*18.01.2005       ERROR DE SINTAXIS                 SOLEDAD QUILODRAN.                            
+//*--------------------------------------------------------------------                             
+//JOBLIB   DD  DSN=EXPL.BATCH.LOADLIB,DISP=SHR                                                      
+//         DD  DSN=DB2.V101.DB2A.SDSNLOAD,DISP=SHR                                                  
+//         DD  DSN=EXPL.INGESIST.LOADLIB,DISP=SHR                                                   
+//*--------------------------------------------------------------------                             
+//*--                       INYECTOR 24 HORAS                       ---                             
+//*--------------------------------------------------------------------                             
+//* -------------------------------------------------------                                         
+//* VARIABLES CON FORMATO JOBTRAC CONVERTIDAS A FORMATO TWS                                         
+//* -------------------------------------------------------                                         
+//STEP01   EXEC PGM=JCLBCICS                                                                        
+//SYSPRINT DD  SYSOUT=*                                                                             
+//SYSIN    DD *                                                                                     
+CICSSAFE                                                                                            
+CLOSE MSTTCDS                                                                                       
+CLOSE MSTTPRO                                                                                       
+CLOSE MSTTYLOG                                                                                      
+/*                                                                                                  
+//*-------------------------------------------------------------------                              
+//*                     INYECTOR BATCH STAF 24HRS                                                   
+//*-------------------------------------------------------------------                              
+//STEP02   EXEC PGM=MSTB520,COND=(0,NE)                                                             
+//STEPLIB  DD  DSN=EXPL.BATCH.LOADLIB,DISP=SHR                                                      
+//SYSOUT   DD  SYSOUT=*                                                                             
+//SYSDBOUT DD  SYSOUT=*                                                                             
+//SYSUDUMP DD  SYSOUT=*                                                                             
+//LISTADO  DD  SYSOUT=*                                                                             
+//MSTTLOGI DD DSN=PMST.VT.LOG.INYECTOR.I24H,DISP=SHR                                                
+//MSTTPRO  DD DSN=PMST.VT.PROCESOS.INYECTOR,DISP=SHR                                                
+//MSTTI24H DD DSN=PMST.VT.INYECTOR.I24H.CDS,DISP=SHR                                                
+//SYSIN    DD  *                                                                                    
+CDS  %DIAHOY22 I                                                                                    
+/*                                                                                                  
+//*--------------------------------------------------------------------*                            
+//STEP03  EXEC PGM=IDCAMS,COND=(0,NE)                                                               
+//SYSOUT   DD  SYSOUT=*                                                                             
+//SYSPRINT DD  SYSOUT=*                                                                             
+//SYSIN    DD  *                                                                                    
+   DELETE  PCDS.NW.SALIDA.BT24H.PROCESO  SCRATCH NONVSAM                                            
+   SET MAXCC = 0                                                                                    
+/*                                                                                                  
+//STEP04   EXEC PGM=IDCAMS,COND=(0,NE)                                                              
+//SYSPRINT DD  SYSOUT=*                                                                             
+//INPUT01  DD  DSN=PMST.VT.INYECTOR.I24H.CDS,DISP=SHR                                               
+//OUTPUT   DD  DSN=PCDS.NW.SALIDA.BT24H.PROCESO,DISP=(NEW,CATLG),                                   
+//             DCB=(DSORG=PS,RECFM=FB,LRECL=386,BLKSIZE=27792),                                     
+//             UNIT=SYSDA,SPACE=(CYL,(3,1),RLSE)                                                    
+//SYSIN    DD *                                                                                     
+   REPRO INFILE (INPUT01)  -                                                                        
+         OUTFILE (OUTPUT)                                                                           
+   IF  MAXCC = 12  THEN  SET MAXCC = 0                                                              
+/*                                                                                                  
+//STEP05   EXEC PGM=JCLBCICS                                                                        
+//SYSPRINT DD  SYSOUT=*                                                                             
+//SYSIN    DD *                                                                                     
+CICSSAFE                                                                                            
+OPEN  MSTTCDS                                                                                       
+OPEN  MSTTPRO                                                                                       
+OPEN  MSTTYLOG                                                                                      
+/*                                                                                                  
+//STEP06  EXEC PGM=IDCAMS,COND=(0,NE)                                                               
+//SYSOUT   DD  SYSOUT=*                                                                             
+//SYSPRINT DD  SYSOUT=*                                                                             
+//SYSIN    DD  *                                                                                    
+   DELETE  PCDS.NW.SALIDA.CDSJ477   SCRATCH NONVSAM                                                 
+   SET MAXCC = 0                                                                                    
+/*                                                                                                  
+//STEP07   EXEC PGM=SORT,COND=(0,NE)                                                                
+//SYSOUT   DD  SYSOUT=*                                                                             
+//SORTLIB  DD  DSN=SYS1.SORTLIB,DISP=SHR                                                            
+//SORTWK01 DD  UNIT=SYSDA,SPACE=(CYL,(8,2))                                                         
+//SORTWK02 DD  UNIT=SYSDA,SPACE=(CYL,(8,2))                                                         
+//SORTWK03 DD  UNIT=SYSDA,SPACE=(CYL,(8,2))                                                         
+//SORTWK04 DD  UNIT=SYSDA,SPACE=(CYL,(8,2))                                                         
+//SORTWK05 DD  UNIT=SYSDA,SPACE=(CYL,(8,2))                                                         
+//SORTWK06 DD  UNIT=SYSDA,SPACE=(CYL,(8,2))                                                         
+//SORTWK07 DD  UNIT=SYSDA,SPACE=(CYL,(8,2))                                                         
+//SORTIN   DD  DSN=PCDS.NW.SALIDA.BT24H.PROCESO,DISP=SHR                                            
+//SORTOUT  DD DISP=(NEW,PASS),                                                                      
+//            UNIT=SYSDA,SPACE=(CYL,(6,2),RLSE),                                                    
+//            DCB=(DSORG=PS,RECFM=FB,LRECL=386,BLKSIZE=27792)                                       
+//SYSIN    DD *                                                                                     
+   SORT  FIELDS=(157,10,CH,A)                                                                       
+   RECORD TYPE=F,LENGTH=386                                                                         
+/*                                                                                                  
+//STEP08   EXEC PGM=CDSB477,COND=(0,NE)                                                             
+//SYSOUT   DD  SYSOUT=*                                                                             
+//SYSDBOUT DD  SYSOUT=*                                                                             
+//SYSUDUMP DD  SYSOUT=X                                                                             
+//SYSPRINT DD  SYSOUT=*                                                                             
+//MOVBT24H DD  DSN=*.STEP07.SORTOUT,DISP=SHR                                                        
+//SALIDA   DD DSN=PCDS.NW.SALIDA.CDSJ477,DISP=(NEW,CATLG),                                          
+//         UNIT=3390,SPACE=(CYL,(1,1),RLSE),                                                        
+//         DCB=(DSORG=PS,RECFM=FB,LRECL=120,BLKSIZE=27960)                                          
+%DIAHOY22                                                                                           
+/*                                                                                                  

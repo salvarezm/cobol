@@ -1,0 +1,404 @@
+      ******************************************************************        000010                                                                
+      *                    IDENTIFICATION DIVISION                     *        000020                                                                
+      ******************************************************************        000030                                                                
+       IDENTIFICATION DIVISION.                                                 000040                                                                
+       PROGRAM-ID.    TCNB8001.                                                 000050                                                                
+       AUTHOR.        BANCOESTADO - RAUL GONZALEZ S                             000060                                                                
+       DATE-WRITTEN.  17-12-2013.                                               000070                                                                
+       DATE-COMPILED.                                                           000080                                                                
+      ******************************************************************        000090                                                                
+      *                          TCNB8001                              *        000100                                                                
+      * DESCRIPCION DEL PROGRAMA Y SUS PRINCIPALES FUNCIONALIDADES.    *        000110                                                                
+      ******************************************************************        000120                                                                
+      *  INSTITUCION   : BANCO DEL ESTADO DE CHILE                     *        000130                                                                
+      *  SISTEMA       : TARJETA DE CREDITO (TCN)                      *        000140                                                                
+      *  MODULO        : TCN                                           *        000150                                                                
+      *  PROGRAMA      : TCNB8001                                      *        000160                                                                
+      *  ENCARGADO BCO : RAFAEL FONSECA                                *        000170                                                                
+      *  ANALISTA      : EDITH ROJAS SANDOVAL                          *        000180                                                                
+      *  PROGRAMADOR   : LUIS FAUNDEZ CURAMIL                          *        000190                                                                
+      *  FECHA CREACION: 17/12/2013                                    *        000200                                                                
+      *                                                                *        000210                                                                
+      * OBJETIVO PROGRAMA :                                            *        000220                                                                
+      *   GENERA TRAILER CONTROL DE INTERFAZ DE CARTERA DE CLIENTES.   *        000230                                                                
+      *  DATOS DE CLIENTES DE TARJETAS DE CREDITO NMO PARA ENVIAR A    *        000240                                                                
+      *  CELMEDIA.                                                     *        000250                                                                
+      *                                                                *        000260                                                                
+      *  INPUT: - ENTRADA : ARCHIVO DE CARTERA CLIENTES                *        000270                                                                
+      * OUTPUT: - SALIDA  : ARCHIVO DE CARTERA CLIENTES                *        000280                                                                
+      *                                                                *        000290                                                                
+      * COPYS   - TCNY8002: ESTRUCTURA ARCHIVO DE CARTERA CLIENTES     *        000300                                                                
+      *                                                                *        000310                                                                
+      * RUTINAS - TEGR006X: RUTINA VALIDADORA DE FECHA                 *        000320                                                                
+      *                                                                *        000330                                                                
+      ******************************************************************        000340                                                                
+      * MODIFICACIONES  :                                              *        000350                                                                
+      * FECHA MODIFICA. :                                              *        000360                                                                
+      * DESCRIPCION     :                                              *        000370                                                                
+      *                                                                *        000380                                                                
+      ******************************************************************        000390                                                                
+                                                                                000400                                                                
+      ******************************************************************        000410                                                                
+      *                    ENVIRONMENT DIVISION                        *        000420                                                                
+      ******************************************************************        000430                                                                
+       ENVIRONMENT DIVISION.                                                    000440                                                                
+                                                                                000450                                                                
+      ******************************************************************        000460                                                                
+      *                    CONFIGURATION SECTION                       *        000470                                                                
+      ******************************************************************        000480                                                                
+       CONFIGURATION SECTION.                                                   000490                                                                
+       SPECIAL-NAMES.                                                           000500                                                                
+           DECIMAL-POINT IS COMMA.                                              000510                                                                
+                                                                                000520                                                                
+      ********************************************M*********************        000530                                                                
+      *                    INPUT-OUTPUT SECTION                        *        000540                                                                
+      ******************************************************************        000550                                                                
+       INPUT-OUTPUT SECTION.                                                    000560                                                                
+       FILE-CONTROL.                                                            000570                                                                
+                                                                                000580                                                                
+           SELECT ENTRADA      ASSIGN        TO ENTRADA                         000590                                                                
+                               FILE STATUS   IS FS-ENT.                         000600                                                                
+                                                                                000610                                                                
+           SELECT SALIDA       ASSIGN        TO SALIDA                          000620                                                                
+                               FILE STATUS   IS FS-SAL.                         000630                                                                
+                                                                                000640                                                                
+      ******************************************************************        000650                                                                
+      *                       DATA DIVISION.                           *        000660                                                                
+      ******************************************************************        000670                                                                
+       DATA DIVISION.                                                           000680                                                                
+                                                                                000690                                                                
+      ******************************************************************        000700                                                                
+      *                       FILE SECTION                             *        000710                                                                
+      ******************************************************************        000720                                                                
+       FILE SECTION.                                                            000730                                                                
+                                                                                000740                                                                
+      *----------------------------------------------------------------*        000750                                                                
+      *                       ARCHIVOS SALIDA                          *        000760                                                                
+      *----------------------------------------------------------------*        000770                                                                
+       FD  ENTRADA                                                              000780                                                                
+           RECORDING MODE IS F.                                                 000790                                                                
+       01  ENTRADA-REG                 PIC X(318).                              000800                                                                
+                                                                                000810                                                                
+       FD  SALIDA                                                               000820                                                                
+           RECORDING MODE IS F.                                                 000830                                                                
+       01  SALIDA-REG                  PIC X(318).                              000840                                                                
+                                                                                000850                                                                
+      ******************************************************************        000860                                                                
+      *                     WORKING-STORAGE SECTION                    *        000870                                                                
+      ******************************************************************        000880                                                                
+       WORKING-STORAGE SECTION.                                                 000890                                                                
+                                                                                000900                                                                
+      *----------------------------------------------------------------*        000910                                                                
+      *                           CONSTANTES                           *        000920                                                                
+      *----------------------------------------------------------------*        000930                                                                
+       01 CONSTANTES.                                                           000940                                                                
+          05 CT-1                      PIC 9(01)       VALUE 1.                 000950                                                                
+          05 CT-99                     PIC 9(02)       VALUE 99.                000960                                                                
+          05 CT-ENTRADA                PIC X(08)       VALUE 'ENTRADA '.      00000970                                                                
+          05 CT-SALIDA                 PIC X(08)       VALUE 'SALIDA  '.        000980                                                                
+          05 CT-TEGR006X               PIC X(08)       VALUE 'TEGR006X'.        000990                                                                
+          05 CT-ERR-LECT               PIC X(40)       VALUE                    001000                                                                
+              'ERROR EN LECTURA ARCHIVO'.                                       001010                                                                
+          05 CT-ERR-OPEN               PIC X(40)       VALUE                    001020                                                                
+              'ERROR EN APERTURA DE ARCHIVO'.                                   001030                                                                
+          05 CT-ERR-GRA                PIC X(40)       VALUE                    001040                                                                
+              'ERROR AL GRABAR REGISTRO'.                                       001050                                                                
+          05 CT-ERROR-CLOSE            PIC X(40)       VALUE                    001060                                                                
+              'ERROR EN CIERRE DE ARCHIVOS'.                                    001070                                                                
+          05 CT-ERR-FEC                PIC X(40)       VALUE                    001080                                                                
+             'FECHA ERRONEA'.                                                   001090                                                                
+                                                                                001100                                                                
+      *----------------------------------------------------------------*        001110                                                                
+      *                       CONTADORES                               *        001120                                                                
+      *----------------------------------------------------------------*        001130                                                                
+       01 CONTADORES.                                                           001140                                                                
+          05 CN-LEI-ENT                PIC 9(08)       VALUE ZEROES.            001150                                                                
+          05 CN-GRA-SAL                PIC 9(08)       VALUE ZEROES.            001160                                                                
+		                                                                              001170                                                                
+      *----------------------------------------------------------------*        001180                                                                
+      *                       FILE STATUS                              *        001190                                                                
+      *-----------------------------------------------------------------        001200                                                                
+       01 FILES-STATUS.                                                         001210                                                                
+          05 FS-ENT                    PIC X(02).                              0001220                                                                
+             88 FS-NORMAL-ENT                          VALUE '00'.             0001230                                                                
+             88 FS-EOF-ENT                             VALUE '10'.             0001240                                                                
+          05 FS-SAL                    PIC X(02).                               001250                                                                
+             88 FS-NORMAL-SAL                          VALUE '00'.              001260                                                                
+                                                                                001270                                                                
+      *----------------------------------------------------------------*        001280                                                                
+      *                       SWITCHES                                 *        001290                                                                
+      *----------------------------------------------------------------*        001300                                                                
+       01 SWITCHES.                                                             001310                                                                
+          05 SW-FLAG-CLOSE             PIC X(02) VALUE 'SI'.                    001320                                                                
+             88 SW-FLAG-CLOSE-SI                       VALUE 'SI'.              001330                                                                
+             88 SW-FLAG-CLOSE-NO                       VALUE 'NO'.              001340                                                                
+                                                                                001350                                                                
+      *----------------------------------------------------------------*        001360                                                                
+      *                       AUXILIARES                               *        001370                                                                
+      *----------------------------------------------------------------*        001380                                                                
+       01 VARIABLES.                                                            001390                                                                
+          05 WS-PARRAFO-ERR            PIC X(40)      VALUE SPACES.             001400                                                                
+          05 WS-DET-CODIGO             PIC 9(04)      VALUE ZEROES.             001410                                                                
+          05 WS-DET-ARCHIVO            PIC X(08)      VALUE SPACES.             001420                                                                
+          05 WS-DET-ERROR              PIC X(40)      VALUE SPACES.             001430                                                                
+          05 WS-DET-LLAVE              PIC X(16)      VALUE SPACES.             001440                                                                
+          05 WS-FECHA.                                                          001450                                                                
+             10 WS-FEC-PAR-ANO         PIC 9(04)      VALUE ZEROES.             001460                                                                
+             10 WS-FEC-PAR-MES         PIC 9(02)      VALUE ZEROES.             001470                                                                
+             10 WS-FEC-PAR-DIA         PIC 9(02)      VALUE ZEROES.             001480                                                                
+          05 WS-FECHA-AUX.                                                      001490                                                                
+             10 WS-FEC-PAR-ANO-AUX     PIC X(04)      VALUE SPACES.             001500                                                                
+             10 WS-FEC-GUION-UNO       PIC X(01)      VALUE '-'.                001510                                                                
+             10 WS-FEC-PAR-MES-AUX     PIC X(02)      VALUE SPACES.             001520                                                                
+             10 WS-FEC-GUION-DOS       PIC X(01)      VALUE '-'.                001530                                                                
+             10 WS-FEC-PAR-DIA-AUX     PIC X(02)      VALUE SPACES.             001540                                                                
+                                                                                001550                                                                
+      *----------------------------------------------------------------*        001560                                                                
+      * AREA RUTINA VALIDA FECHA - TEGR006X-                           *        001570                                                                
+      *----------------------------------------------------------------*        001580                                                                
+       01  REG-TEGR006.                                                         001590                                                                
+           05 TEGR006-FECHA-DMA.                                                001600                                                                
+              10 TEGR006-FEC-DIA       PIC 9(02).                               001610                                                                
+              10 TEGR006-FEC-MES       PIC 9(02).                               001620                                                                
+              10 TEGR006-FEC-ANO       PIC 9(04).                               001630                                                                
+           05 TEGR006-COD-SALIDA       PIC X(01).                               001640                                                                
+                                                                                001650                                                                
+      *----------------------------------------------------------------*        001660                                                                
+      *                       FILE RECORDS                             *        001670                                                                
+      *----------------------------------------------------------------*        001680                                                                
+        COPY TCNY8002.                                                          001690                                                                
+        COPY TCNY8002 REPLACING TCNY8002-REG BY TCNYSAL-REG.                    001700                                                                
+                                                                                001710                                                                
+      ******************************************************************        001720                                                                
+      *                    PROCEDURE DIVISION                          *        001730                                                                
+      ******************************************************************        001740                                                                
+       PROCEDURE DIVISION.                                                      001750                                                                
+                                                                                001760                                                                
+           PERFORM 1000-INICIO                                                  001770                                                                
+           PERFORM 2000-PROCESO UNTIL FS-EOF-ENT                                001780                                                                
+           PERFORM 3000-TERMINO.                                                001790                                                                
+                                                                                001800                                                                
+      ******************************************************************        001810                                                                
+      *      SE INICIALIZAN VARIABLES, LEEN REGISTROS                  *        001820                                                                
+      *      Y SE EVALUAN ARCHIVO VACIOS.                              *        001830                                                                
+      ******************************************************************        001840                                                                
+       1000-INICIO.                                                             001850                                                                
+           PERFORM 1100-ACEPTA-PARAMETRO                                        001860                                                                
+           PERFORM 1200-ABRIR-ARCHIVOS                                          001870                                                                
+           PERFORM 1300-LEER-ENTRADA                                            001880                                                                
+           PERFORM 1400-EVALUAR-ARCHIVO-VACIO.                                  001890                                                                
+                                                                                001900                                                                
+      ******************************************************************        001910                                                                
+      *      ACEPTA PARAMETROS                                         *        001920                                                                
+      ******************************************************************        001930                                                                
+       1100-ACEPTA-PARAMETRO.                                                   001940                                                                
+                                                                                001950                                                                
+           INITIALIZE                           TCNY8002-REG                    001960                                                                
+                                                TCNYSAL-REG                     001970                                                                
+           ACCEPT WS-FECHA                                                      001980                                                                
+           MOVE WS-FEC-PAR-DIA              TO TEGR006-FEC-DIA                  001990                                                                
+           MOVE WS-FEC-PAR-MES              TO TEGR006-FEC-MES                  002000                                                                
+           MOVE WS-FEC-PAR-ANO              TO TEGR006-FEC-ANO                  002010                                                                
+                                                                                002020                                                                
+           CALL CT-TEGR006X USING TEGR006-FECHA-DMA TEGR006-COD-SALIDA          002030                                                                
+                                                                                002040                                                                
+           IF TEGR006-COD-SALIDA NOT = SPACES                                   002050                                                                
+              MOVE CT-99                    TO WS-DET-CODIGO                    002060                                                                
+              MOVE CT-ERR-FEC               TO WS-DET-ERROR                     002070                                                                
+              MOVE CT-TEGR006X              TO WS-DET-ARCHIVO                   002080                                                                
+              MOVE WS-FECHA                 TO WS-DET-LLAVE                     002090                                                                
+              SET  SW-FLAG-CLOSE-NO         TO TRUE                             002100                                                                
+              PERFORM 9999-ABEND                                                002110                                                                
+           ELSE                                                                 002120                                                                
+              MOVE WS-FEC-PAR-DIA           TO WS-FEC-PAR-DIA-AUX               002130                                                                
+              MOVE WS-FEC-PAR-MES           TO WS-FEC-PAR-MES-AUX               002140                                                                
+              MOVE WS-FEC-PAR-ANO           TO WS-FEC-PAR-ANO-AUX               002150                                                                
+           END-IF.                                                              002160                                                                
+                                                                                002170                                                                
+      ******************************************************************        002180                                                                
+      *      ABRE ARCHIVOS DE ENTRADA Y SALIDA.                        *        002190                                                                
+      ******************************************************************        002200                                                                
+       1200-ABRIR-ARCHIVOS.                                                     002210                                                                
+                                                                                002220                                                                
+           OPEN INPUT  ENTRADA                                                  002230                                                                
+           OPEN OUTPUT SALIDA                                                   002240                                                                
+                                                                                002250                                                                
+           IF ( NOT FS-NORMAL-ENT ) OR                                          002260                                                                
+              ( NOT FS-NORMAL-SAL )                                             002270                                                                
+           THEN                                                                 002280                                                                
+              MOVE CT-ERR-OPEN               TO WS-PARRAFO-ERR                  002290                                                                
+              MOVE CT-99                     TO WS-DET-CODIGO                   002300                                                                
+              PERFORM 9999-ABEND                                                002310                                                                
+           END-IF.                                                              002320                                                                
+                                                                                002330                                                                
+      ******************************************************************        002340                                                                
+      *      LEER ARCHIVO ENTRADA                                     *        0002350                                                                
+      ******************************************************************        002360                                                                
+       1300-LEER-ENTRADA.                                                      0002370                                                                
+                                                                                002380                                                                
+           READ ENTRADA INTO TCNY8002-REG END-READ                             0002390                                                                
+                                                                                002400                                                                
+           EVALUATE TRUE                                                        002410                                                                
+               WHEN FS-NORMAL-ENT                                              0002420                                                                
+                    ADD  CT-1                TO CN-LEI-ENT                     0002430                                                                
+               WHEN FS-EOF-ENT                                                 0002440                                                                
+                    CONTINUE                                                   0002450                                                                
+               WHEN OTHER                                                       002460                                                                
+                    MOVE FS-ENT              TO WS-DET-CODIGO                  0002470                                                                
+                    MOVE CT-ENTRADA          TO WS-DET-ARCHIVO                 0002480                                                                
+                    MOVE CT-ERR-LECT         TO WS-DET-ERROR                    002490                                                                
+                    MOVE SPACES              TO WS-DET-LLAVE                    002500                                                                
+                    PERFORM 9999-ABEND                                          002510                                                                
+           END-EVALUATE.                                                        002520                                                                
+                                                                                002530                                                                
+      ******************************************************************        002540                                                                
+      *      EVALUA ARCHIVO VACIO.                                     *        002550                                                                
+      ******************************************************************        002560                                                                
+       1400-EVALUAR-ARCHIVO-VACIO.                                              002570                                                                
+                                                                                002580                                                                
+           IF FS-EOF-ENT                                                       0002590                                                                
+              DISPLAY '************************************************'        002600                                                                
+              DISPLAY '* ARCHIVO ENTRADA VACIO ES VALIDO PARA PROCESO *'       0002610                                                                
+              DISPLAY '************************************************'        002620                                                                
+           END-IF.                                                              002630                                                                
+                                                                                002640                                                                
+      ******************************************************************        002650                                                                
+      *      SE REALIZA  PROCEDIMIENTOS DEL PGM                        *        002660                                                                
+      ******************************************************************        002670                                                                
+       2000-PROCESO.                                                            002680                                                                
+                                                                                002690                                                                
+           PERFORM 2200-MOVER-DATOS                                             002700                                                                
+           PERFORM 2300-GRABAR-SALIDA                                           002710                                                                
+           PERFORM 1300-LEER-ENTRADA.                                           002720                                                                
+                                                                                002730                                                                
+                                                                                002740                                                                
+      ******************************************************************        002750                                                                
+      *      MUEVE DATOS A SALIDA.                                     *        002760                                                                
+      ******************************************************************        002770                                                                
+       2200-MOVER-DATOS.                                                        002780                                                                
+                                                                                002790                                                                
+           MOVE TCNY8002-REG                 TO TCNYSAL-REG.                    002800                                                                
+                                                                                002810                                                                
+                                                                                002820                                                                
+      ******************************************************************        002830                                                                
+      *      GRABA SALIDA DE PROCEDIMIENTO.                            *        002840                                                                
+      ******************************************************************        002850                                                                
+       2300-GRABAR-SALIDA.                                                      002860                                                                
+                                                                                002870                                                                
+           WRITE SALIDA-REG FROM TCNY8002-DTO-REG OF TCNYSAL-REG                002880                                                                
+                                                                                002890                                                                
+           IF FS-NORMAL-SAL                                                     002900                                                                
+              ADD CT-1                       TO CN-GRA-SAL                      002910                                                                
+           ELSE                                                                 002920                                                                
+              MOVE FS-SAL                    TO WS-DET-CODIGO                   002930                                                                
+              MOVE CT-SALIDA                 TO WS-DET-ARCHIVO                  002940                                                                
+              MOVE CT-ERR-GRA                TO WS-DET-ERROR                    002950                                                                
+              MOVE SPACES                    TO WS-DET-LLAVE                    002960                                                                
+              PERFORM 9999-ABEND                                                002970                                                                
+           END-IF.                                                              002980                                                                
+                                                                                002990                                                                
+      ******************************************************************        003000                                                                
+      *      GRABA REGISTRO DE CONTROL DE PROGRAMA                     *        003010                                                                
+      ******************************************************************        003020                                                                
+       3100-GRABAR-CONTROL.                                                     003030                                                                
+                                                                                003040                                                                
+           INITIALIZE TCNY8002-CTL-REG               OF TCNYSAL-REG             003050                                                                
+           MOVE WS-FECHA-AUX TO TCNY8002-CTL-FEC     OF TCNYSAL-REG             003060                                                                
+           MOVE CN-GRA-SAL   TO TCNY8002-CTL-CAN-REG OF TCNYSAL-REG             003070                                                                
+           WRITE SALIDA-REG  FROM TCNY8002-CTL-REG   OF TCNYSAL-REG             003080                                                                
+                                                                                003090                                                                
+           IF FS-NORMAL-SAL                                                     003100                                                                
+              CONTINUE                                                          003110                                                                
+           ELSE                                                                 003120                                                                
+              MOVE FS-SAL                    TO WS-DET-CODIGO                   003130                                                                
+              MOVE CT-SALIDA                 TO WS-DET-ARCHIVO                  003140                                                                
+              MOVE CT-ERR-GRA                TO WS-DET-ERROR                    003150                                                                
+              MOVE SPACES                    TO WS-DET-LLAVE                    003160                                                                
+              PERFORM 9999-ABEND                                                003170                                                                
+           END-IF.                                                              003180                                                                
+                                                                                003190                                                                
+      ******************************************************************        003200                                                                
+      *      TERMINO DE PROCESO.                                       *        003210                                                                
+      ******************************************************************        003220                                                                
+       3000-TERMINO.                                                            003230                                                                
+                                                                                003240                                                                
+           IF SW-FLAG-CLOSE-SI                                                  003250                                                                
+              PERFORM 3100-GRABAR-CONTROL                                       003260                                                                
+              PERFORM 3200-CERRAR-ARCHIVO                                       003270                                                                
+           END-IF                                                               003280                                                                
+           PERFORM 3300-ESTADISTICA                                             003290                                                                
+           MOVE WS-DET-CODIGO                TO RETURN-CODE                     003300                                                                
+           STOP RUN.                                                            003310                                                                
+                                                                                003320                                                                
+      ******************************************************************        003330                                                                
+      *      CIERRA ARCHIVOS UTILIZADOS.                               *        003340                                                                
+      ******************************************************************        003350                                                                
+       3200-CERRAR-ARCHIVO.                                                     003360                                                                
+                                                                                003370                                                                
+           CLOSE ENTRADA SALIDA                                                 003380                                                                
+                                                                                003390                                                                
+           IF (NOT FS-NORMAL-ENT) OR                                            003400                                                                
+              (NOT FS-NORMAL-SAL)                                               003410                                                                
+           THEN                                                                 003420                                                                
+              MOVE CT-ERROR-CLOSE            TO WS-PARRAFO-ERR                  003430                                                                
+              MOVE CT-99                     TO WS-DET-CODIGO                   003440                                                                
+              SET  SW-FLAG-CLOSE-NO          TO TRUE                            003450                                                                
+              PERFORM 9999-ABEND                                                003460                                                                
+           END-IF.                                                              003470                                                                
+                                                                                003480                                                                
+      ******************************************************************        003490                                                                
+      *      MUESTRA ESTADISTICAS DEL PROGRAMA                         *        003500                                                                
+      ******************************************************************        003510                                                                
+       3300-ESTADISTICA.                                                        003520                                                                
+                                                                                003530                                                                
+           DISPLAY '*------------------------------------------------*'         003540                                                                
+           DISPLAY '*  ESTADISTICAS PGM TCNB8001 ' WS-FECHA-AUX            '    003550                                                                
+           DISPLAY '*------------------------------------------------*'         003560                                                                
+           DISPLAY '* REGISTROS LEIDOS ENTRADA........' CN-LEI-ENT              003570                                                                
+           DISPLAY '*------------------------------------------------*'         003580                                                                
+           DISPLAY '* REGISTROS GRABADOS EN SALIDA....' CN-GRA-SAL              003590                                                                
+           DISPLAY '*------------------------------------------------*'         003600                                                                
+           DISPLAY ' '.                                                         003610                                                                
+                                                                                003620                                                                
+      ******************************************************************        003630                                                                
+      *      MUESTRA LOS DATOS EN CASO DE ERROR.                       *        003640                                                                
+      ******************************************************************        003650                                                                
+       6000-INFORMAR-ERROR.                                                     003660                                                                
+                                                                                003670                                                                
+           DISPLAY '*----------------------------------------------'            003680                                                                
+           DISPLAY '        PROGRAMA TCNB8001 CON PROBLEMAS'                    003690                                                                
+           DISPLAY '*----------------------------------------------'            003700                                                                
+           DISPLAY ' --> CODIGO ERROR : ' WS-DET-CODIGO                         003710                                                                
+           DISPLAY ' --> DETALLE      : ' WS-DET-ERROR                          003720                                                                
+           DISPLAY ' --> ARCHIVO      : ' WS-DET-ARCHIVO                        003730                                                                
+           DISPLAY ' --> LLAVE        : ' WS-DET-LLAVE                          003740                                                                
+           DISPLAY ' '.                                                         003750                                                                
+                                                                                003760                                                                
+      ******************************************************************        003770                                                                
+      * 7000-ERROR-FS-FILE*                                                     003780                                                                
+      *      MUESTRA LOS FS DE LOS ARCHIVOS EN CASO DE ERROR*                   003790                                                                
+      ******************************************************************        003800                                                                
+       7000-ERROR-FS-FILE.                                                      003810                                                                
+                                                                                003820                                                                
+           DISPLAY  '--------------------------------------------'              003830                                                                
+           DISPLAY  ' PROGRAMA TCNB8001 ACCESO DATOS ARCHIVO     '              003840                                                                
+           DISPLAY  '              CON PROBLEMAS                 '              003850                                                                
+           DISPLAY  '--------------------------------------------'              003860                                                                
+           DISPLAY WS-PARRAFO-ERR                                               003870                                                                
+           DISPLAY 'FILE STATUS ARCHIVOS'                                       003880                                                                
+           DISPLAY ' --> ENTRADA  FS    : ' FS-ENT.                             003890                                                                
+           DISPLAY ' --> SALIDA   FS    : ' FS-SAL.                             003900                                                                
+                                                                                003910                                                                
+      ******************************************************************        003920                                                                
+      *      MUESTRA TERMINO ANORMAL                                   *        003930                                                                
+      ******************************************************************        003940                                                                
+       9999-ABEND.                                                              003950                                                                
+                                                                                003960                                                                
+           IF WS-PARRAFO-ERR = SPACES                                           003970                                                                
+              PERFORM 6000-INFORMAR-ERROR                                       003980                                                                
+           ELSE                                                                 003990                                                                
+              PERFORM 7000-ERROR-FS-FILE                                        004000                                                                
+           END-IF                                                               004010                                                                
+           PERFORM 3000-TERMINO.                                                004020                                                                
+                                                                                004030                                                                
+      *******   FIN PROGRAMA TCNB8001  *********                                004040                                                                

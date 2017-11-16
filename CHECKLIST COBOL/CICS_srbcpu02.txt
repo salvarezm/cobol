@@ -1,0 +1,568 @@
+       IDENTIFICATION DIVISION.                                                                                                                       
+      *-----------------------*                                                                                                                       
+       PROGRAM-ID.  SRBCPU02.                                                                                                                         
+      *----------------------*                                                                                                                        
+      *REMARKS.                                                                                                                                       
+      *--------------------------------------------------------------*                                                                                
+      * INSTITUCION    : BANCO ESTADO                                *                                                                                
+      * SISTEMA        : SISTEMA RIESGO BANCO                        *                                                                                
+      * MODULO         : SRB                                         *                                                                                
+      * PROGRAMA       : SRBCPU02                                    *                                                                                
+      * ENCARGADO      : RODRIGO NARANJO R.                          *                                                                                
+      * ANALISTA       : CLAUDIA ACEVEDO C.                          *                                                                                
+      * PROGRAMADOR    : CRISTIAN CAMPOS F.                          *                                                                                
+      * FECHA CREACION : 12/11/2014                                  *                                                                                
+      *--------------------------------------------------------------*                                                                                
+      * OBJETIVO DEL PROGRAMA:                                       *                                                                                
+      *           DESPLIEGA LA CONSULTA DE DETALLE DE LA FICHA DE    *                                                                                
+      *           CLASIFICACION INDIVIDUAL,  MOSTRANDO LOS VALORES   *                                                                                
+      *           INDICADOS EN LA ESPECIFICACION POR RUT Y NUMERO    *                                                                                
+      *           DE OPERACION.                                      *                                                                                
+      *--------------------------------------------------------------*                                                                                
+      * INPUT             : RUT                                      *                                                                                
+      *                     NUMERO DE OPERACION                      *                                                                                
+      * OUTPUT            : CAMPOS ARCHIVO ANTECEDENTES DEL DEUDOR.  *                                                                                
+      * TRANSACCIONES     :                                          *                                                                                
+      *                     TRX CICS: RBP2                           *                                                                                
+      *                     TRX ISN : 3316                           *                                                                                
+      *--------------------------------------------------------------*                                                                                
+      * MANTENCIONES                                                 *                                                                                
+      *--------------------------------------------------------------*                                                                                
+      * RESPONSABLE     : SEBASTIAN MORALES LISBOA  (SML)            *                                                                                
+      * FECHA INICIO    : 16/01/2015                                 *                                                                                
+      * FECHA TERMINO   : 02/02/2015                                 *                                                                                
+      * DESCRIPCION     : SE AGREGA EL CAMPO MARCA COMO PARTE DE LA  *                                                                                
+      *                   LLAVE PARA PODER MOSTRAR TODAS LAS OPERA-  *                                                                                
+      *                   CIONES DE UN CLIENTE                       *                                                                                
+      *                   SE ELIMINA VALIDACION DE RUT               *                                                                                
+      *--------------------------------------------------------------*                                                                                
+      * RESPONSABLE     : SEBASTIAN MORALES LISBOA (SML2)            *                                                                                
+      * FECHA           : 02/09/2015                                 *                                                                                
+      * DESCRIPCION     : - SE MODIFICA LARGO DE ARCHIVO, AUMENTANDO *                                                                                
+      *                   A 1539 BYTES. LA LLAVE SE COMPONE DE 39    *                                                                                
+      *                   BYTES Y LA DATA ES DE 1500 CORRESPONDIENTE *                                                                                
+      *                   A LO INFORMADO EN ARCHIVO OPERCIE DEL MES  *                                                                                
+      *                   - SE MODIFICA LA CANTIDAD DE OCURRENCIAS A *                                                                                
+      *                   MOSTRAR POR PANTALLA                       *                                                                                
+      *                   - SE ELIMINA LA FUNCIONALIDAD PARA ORDEN   *                                                                                
+      *                   TEMPORAL EL QUE ENVIADA LOS REGISTROS POR  *                                                                                
+      *                   AGRUPADOS POR TIPO DE CARTERA              *                                                                                
+      *                   - SE AGREGA CONTROL DE LECTURA A ARCHIVO   *                                                                                
+      *                   - SE INCORPORA RUTINA BCCRBRUT PARA VALIDAR*                                                                                
+      *                   RUT DE ENTRADA DESDE PU                    *                                                                                
+      *                   - SE APLICA NUEVA NORMATIVA                *                                                                                
+      ****************************************************************                                                                                
+                                                                                                                                                      
+       ENVIRONMENT DIVISION.                                                                                                                          
+      *=====================                                                                                                                          
+       CONFIGURATION SECTION.                                                                                                                         
+      *----------------------                                                                                                                         
+       SPECIAL-NAMES.  DECIMAL-POINT IS COMMA.                                                                                                        
+       INPUT-OUTPUT SECTION.                                                                                                                          
+       FILE-CONTROL.                                                                                                                                  
+                                                                                                                                                      
+       DATA DIVISION.                                                                                                                                 
+      *==============                                                                                                                                 
+       WORKING-STORAGE SECTION.                                                                                                                       
+      *------------------------                                                                                                                       
+       01 VARIABLES.                                                                                                                                  
+           05 WS-MSG-ABEND.                                                                                                                           
+              10 FILLER                     PIC X(18) VALUE                                                                                           
+                 'ERROR ABEND= '.                                                                                                                     
+              10 WS-COD-ABEND               PIC X(04).                                                                                                
+              10 FILLER                     PIC X(15) VALUE                                                                                           
+                 ' EN PROGRAMA= '.                                                                                                                    
+              10 WS-PGM-ABEND               PIC X(08).                                                                                                
+          05 WS-NOMBRE-PARRAFO        PIC X(040)      VALUE SPACES.                                                                                   
+SML2      05 LARGO-REG                 PIC S9(004) USAGE BINARY                                                                                       
+SML2                                               VALUE +1539.                                                                                       
+SML2      05 LARGO-KEY                 PIC S9(004) USAGE BINARY                                                                                       
+                                                   VALUE +0039.                                                                                       
+          05 WS-I                      PIC 9(002) VALUE ZEROES.                                                                                       
+          05 WS-PE                     PIC 9(002)V9(005) VALUE ZEROES.                                                                                
+          05 WS-EAP                    PIC 9(013) VALUE ZEROES.                                                                                       
+          05 WS-EXPOSICION             PIC 9(013) VALUE ZEROES.                                                                                       
+          05 WS-EOF                    PIC X(002).                                                                                                    
+SML2      05 WSS-ULT-LLV-SOL           PIC X(039).                                                                                                    
+          05 WS-HAY-MAS                PIC 9(001) VALUE ZEROES.                                                                                       
+          05 WS-EIBRESP                PIC X(008).                                                                                                    
+          05 WS-EIBRESP-R REDEFINES WS-EIBRESP.                                                                                                       
+             10 FILLER                 PIC 9(005).                                                                                                    
+             10 WS-EIBRESP-COD         PIC 9(003).                                                                                                    
+                                                                                                                                                      
+       01 VARIABLES-CONTROL.                                                                                                                          
+          05 WSO-COD-RET               PIC 9(03).                                                                                                     
+          05 WSO-GLS-RET               PIC X(30).                                                                                                     
+                                                                                                                                                      
+SML2  *-------------------------------------------*                                                                                                   
+SML2  *    VARIABLES DE VALIDACION RUT CLIENTE    *                                                                                                   
+SML2  *-------------------------------------------*                                                                                                   
+SML2   01 VLRUTWS.                                                                                                                                    
+SML2      05 VL-RUT                    PIC 9(9).                                                                                                      
+SML2      05 VL-DIG                    PIC X.                                                                                                         
+                                                                                                                                                      
+       01 CONSTANTES.                                                                                                                                 
+          05 CT-0                      PIC 9(001)   VALUE 0.                                                                                          
+SML2      05 CT-26                     PIC 9(002)   VALUE 26.                                                                                         
+          05 CT-99                     PIC 9(002)   VALUE 99.                                                                                         
+          05 CT-001                    PIC 9(03)    VALUE  001.                                                                                       
+          05 CT-003600                 PIC 9(1)V9(07) VALUE 0,0360000.                                                                                
+          05 CT-008250                 PIC 9(1)V9(07) VALUE 0,0825000.                                                                                
+          05 CT-021875                 PIC 9(1)V9(07) VALUE 0,2187500.                                                                                
+          05 CT-175000                 PIC 9(1)V9(07) VALUE 1,7500000.                                                                                
+          05 CT-427500                 PIC 9(1)V9(07) VALUE 4,2750000.                                                                                
+          05 CT-900000                 PIC 9(1)V9(07) VALUE 9,0000000.                                                                                
+          05 CT-1387500                PIC 9(2)V9(07) VALUE 13,8750000.                                                                               
+          05 CT-2035000                PIC 9(2)V9(07) VALUE 20,3500000.                                                                               
+          05 CT-3217500                PIC 9(2)V9(07) VALUE 32,1750000.                                                                               
+          05 CT-4387500                PIC 9(2)V9(07) VALUE 43,8750000.                                                                               
+SML2      05 CT-LINK-LARGO             PIC 9(002)   VALUE 48.                                                                                         
+SML2      05 CT-BCCRBRUT               PIC X(08)    VALUE 'BCCRBRUT'.                                                                                 
+          05 CT-1                      PIC 9(001)   VALUE 1.                                                                                          
+          05 CT-03                     PIC 9(002)   VALUE 03.                                                                                         
+          05 CT-000                    PIC 9(003)   VALUE ZEROES.                                                                                     
+SML2      05 CT-146                    PIC 9(003)   VALUE 146.                                                                                        
+          05 CT-900                    PIC 9(003)   VALUE 900.                                                                                        
+          05 CT-A1                     PIC X(002)   VALUE 'A1'.                                                                                       
+          05 CT-A2                     PIC X(002)   VALUE 'A2'.                                                                                       
+          05 CT-A3                     PIC X(002)   VALUE 'A3'.                                                                                       
+          05 CT-A4                     PIC X(002)   VALUE 'A4'.                                                                                       
+          05 CT-A5                     PIC X(002)   VALUE 'A5'.                                                                                       
+          05 CT-A6                     PIC X(002)   VALUE 'A6'.                                                                                       
+          05 CT-B1                     PIC X(002)   VALUE 'B1'.                                                                                       
+          05 CT-B2                     PIC X(002)   VALUE 'B2'.                                                                                       
+          05 CT-B3                     PIC X(002)   VALUE 'B3'.                                                                                       
+          05 CT-B4                     PIC X(002)   VALUE 'B4'.                                                                                       
+          05 CT-SI                     PIC X(002)   VALUE 'SI'.                                                                                       
+          05 CT-NO                     PIC X(002)   VALUE 'NO'.                                                                                       
+          05 CT-ERR-BUF                PIC X(020)   VALUE                                                                                             
+                                      'LARGO BUFFER ERRONEO'.                                                                                         
+          05 CT-GR                     PIC X(002)   VALUE 'GR'.                                                                                       
+          05 CT-SRBVMOI               PIC X(08)       VALUE 'SRBVMOI '.                                                                               
+SML2      05 CT-RUT-VACIO                  PIC X(030)   VALUE                                                                                         
+SML2         'DEBE INGRESAR UN VALOR EN RUT'.                                                                                                         
+SML2      05 CT-RUT-NO-NUMERICO            PIC X(030)   VALUE                                                                                         
+SML2         'RUT INGRESADO NO ES NUMERICO'.                                                                                                          
+SML2      05 CT-RUT-INVALIDO               PIC X(030)   VALUE                                                                                         
+SML2         'RUT INGRESADO NO ES VALIDO'.                                                                                                            
+           05 CT-ERR-START             PIC X(030)      VALUE                                                                                          
+           'ERROR EN START'.                                                                                                                          
+           05 CT-2000-PROCESO          PIC X(040)      VALUE                                                                                          
+           '2000-PROCESO                            '.                                                                                                
+           05 CT-2100-READNEXT-SRBVMOI PIC X(040)      VALUE                                                                                          
+           '2100-READNEXT-SRBVMOI                   '.                                                                                                
+           05 CT-9000-TERMINO          PIC X(040)      VALUE                                                                                          
+           '9000-TERMINO                            '.                                                                                                
+           05 CT-9998-EVALUA-CICS      PIC X(040)      VALUE                                                                                          
+           '9998-EVALUA-CICS                        '.                                                                                                
+           05 CT-ERR-ASS-ABCODE        PIC X(30)       VALUE                                                                                          
+                'ERROR ASSIGN ABCODE ABPROGRAM '.                                                                                                     
+SML2       05 CT-ERR-READ              PIC X(30)       VALUE                                                                                          
+SML2            'ERROR EN READ ARCHIVO SRBVMOI '.                                                                                                     
+                                                                                                                                                      
+       01 TB-TABLA-TEMPORAL.                                                                                                                          
+SML2      05 TABLA-TEMPORAL OCCURS 26 TIMES.                                                                                                          
+             10 TEMP-IDOPER                  PIC X(014).                                                                                              
+SML2         10 TEMP-SUC                     PIC 9(003).                                                                                              
+SML2         10 TEMP-MDA                     PIC 9(003).                                                                                              
+SML2         10 TEMP-COD-CPD                 PIC X(004).                                                                                              
+SML2         10 TEMP-APC                     PIC X(004).                                                                                              
+SML2         10 TEMP-MAR                     PIC X(001).                                                                                              
+             10 TEMP-CLASIF                  PIC X(002).                                                                                              
+             10 TEMP-NRUT-AVAL               PIC 9(009).                                                                                              
+             10 TEMP-DV-AVAL                 PIC X(001).                                                                                              
+             10 TEMP-TIPO-AVAL               PIC 9(001).                                                                                              
+             10 TEMP-TDEUACT                 PIC 9(013).                                                                                              
+             10 TEMP-EXPOSICION              PIC 9(013).                                                                                              
+             10 TEMP-FAMILIA                 PIC X(003).                                                                                              
+             10 TEMP-CARTERA                 PIC X(001).                                                                                              
+             10 TEMP-PE                      PIC 9(002)V9(005).                                                                                       
+             10 TEMP-EAP                     PIC 9(013).                                                                                              
+             10 TEMP-PROAPL                  PIC 9(013).                                                                                              
+             10 TEMP-MON-DED-GAR-FIN         PIC 9(014).                                                                                              
+             10 TEMP-MONGARE                 PIC 9(013).                                                                                              
+             10 TEMP-MON-DED-AVA-FIAN        PIC 9(014).                                                                                              
+                                                                                                                                                      
+      *----- ESTRUCTURA DE ARCHIVO VSAM -----------*                                                                                                  
+       COPY SRBYNOPV.                                                                                                                                 
+                                                                                                                                                      
+      *-------- DATOS COMMAREA --------------------*                                                                                                  
+       01  WSS-AREA-ENTRADA.                                                                                                                          
+           05 ENT-RUT-NUM                  PIC X(009).                                                                                                
+           05 ENT-RUT-DGV                  PIC X(001).                                                                                                
+           05 ENT-IDE-OPE                  PIC X(014).                                                                                                
+SML2       05 ENT-SUC                      PIC 9(003).                                                                                                
+SML2       05 ENT-MDA                      PIC 9(003).                                                                                                
+SML2       05 ENT-COD-CPD                  PIC X(004).                                                                                                
+SML2       05 ENT-APC                      PIC X(004).                                                                                                
+SML        05 ENT-MARCA                    PIC X(001).                                                                                                
+SML2       05 ENT-DAT-FILLER               PIC X(3948) VALUE LOW-VALUES.                                                                              
+                                                                                                                                                      
+       01  WSS-AREA-SALIDA.                                                                                                                           
+           05 WS-SALIDA-REDEF           PIC X(3987) VALUE LOW-VALUES.                                                                                 
+                                                                                                                                                      
+           05 WSS-DATOS-CONTROL         REDEFINES WS-SALIDA-REDEF.                                                                                    
+              10 WSS-COD-RET               PIC 9(03).                                                                                                 
+              10 WSS-GLS-RET               PIC X(30).                                                                                                 
+              10 WSS-DAT-FILLER            PIC X(3954).                                                                                               
+                                                                                                                                                      
+           05 SALIDA-DATOS              REDEFINES WS-SALIDA-REDEF.                                                                                    
+SML2          10 SAL-ULT-LLV-SOL-R         PIC X(039).                                                                                                
+              10 SAL-IND-MAS               PIC 9(001).                                                                                                
+              10 SAL-CAN-REG               PIC 9(002).                                                                                                
+              10 SAL-FILLER-UNO            PIC X(006).                                                                                                
+SML2          10 SAL-DAT-OCURR OCCURS 26 TIMES.                                                                                                       
+                 20 SAL-IDOPER             PIC X(014).                                                                                                
+SML2             20 SAL-SUC                PIC 9(003).                                                                                                
+SML2             20 SAL-MDA                PIC 9(003).                                                                                                
+SML2             20 SAL-COD-CPD            PIC X(004).                                                                                                
+SML2             20 SAL-APC                PIC X(004).                                                                                                
+SML2             20 SAL-MAR                PIC X(001).                                                                                                
+                 20 SAL-CLASIF             PIC X(002).                                                                                                
+                 20 SAL-NRUT-AVAL          PIC 9(009).                                                                                                
+                 20 SAL-DV-AVAL            PIC X(001).                                                                                                
+                 20 SAL-TIPO-AVAL          PIC 9(001).                                                                                                
+                 20 SAL-TDEUACT            PIC 9(013).                                                                                                
+                 20 SAL-EXPOSICION         PIC 9(013).                                                                                                
+                 20 SAL-FAMILIA            PIC X(003).                                                                                                
+                 20 SAL-CARTERA            PIC X(001).                                                                                                
+                 20 SAL-PE                 PIC 9(002)V9(005).                                                                                         
+                 20 SAL-EAP                PIC 9(013).                                                                                                
+                 20 SAL-PROAPL             PIC 9(013).                                                                                                
+                 20 SAL-MON-DED-GAR-FIN    PIC 9(014).                                                                                                
+                 20 SAL-MONGARE            PIC 9(013).                                                                                                
+                 20 SAL-MON-DED-AVA-FIAN   PIC 9(014).                                                                                                
+SML2          10 SAL-FILLER              PIC X(143).                                                                                                  
+                                                                                                                                                      
+       01 WS-LINK-AREA-TRANSFERENCIA.                                                                                                                 
+          05 LINK-AREA-HEADER           PIC X(109).                                                                                                   
+          05 LINK-AREA-HEADER-R         REDEFINES LINK-AREA-HEADER.                                                                                   
+             10 LINK-COD-TRX-CICS       PIC X(004).                                                                                                   
+             10 LINK-COD-SISTEMA        PIC X(001).                                                                                                   
+             10 LINK-NUM-VERSION        PIC X(001).                                                                                                   
+             10 LINK-TRXMODO.                                                                                                                         
+                15 LINK-TRX             PIC 9(004).                                                                                                   
+                15 LINK-TRX-R           REDEFINES LINK-TRX.                                                                                           
+                   20 LINK-APLIC        PIC 9(001).                                                                                                   
+                   20 LINK-TRX-RANGO    PIC X(003).                                                                                                   
+                15 LINK-MODO            PIC X(001).                                                                                                   
+             10 LINK-RUT.                                                                                                                             
+                15 LINK-NUM-RUT         PIC 9(008).                                                                                                   
+                15 LINK-DV-RUT          PIC X(001).                                                                                                   
+             10 LINK-OFICINA            PIC X(004).                                                                                                   
+             10 LINK-IDE-ESTACION       PIC X(004).                                                                                                   
+             10 LINK-APLICACION-ORI     PIC X(004).                                                                                                   
+             10 LINK-IDE-SUPERVISOR     PIC X(009).                                                                                                   
+             10 LINK-IDE-SUPERVISOR-R   REDEFINES LINK-IDE-SUPERVISOR.                                                                                
+                15 LINK-IDE-SUPERVIS-N  PIC 9(009).                                                                                                   
+             10 LINK-TIP-OPERACION      PIC 9(001).                                                                                                   
+             10 LINK-FECHA              PIC 9(008).                                                                                                   
+             10 LINK-FECHA-R            REDEFINES LINK-FECHA.                                                                                         
+                15 LINK-ANO             PIC 9(004).                                                                                                   
+                15 LINK-MES             PIC 9(002).                                                                                                   
+                15 LINK-DIA             PIC 9(002).                                                                                                   
+             10 LINK-HORA               PIC X(006).                                                                                                   
+             10 LINK-UBI-LOG.                                                                                                                         
+                15 LINK-NRO-JRN         PIC S9(007) COMP-3.                                                                                           
+                15 LINK-NRO-OCC         PIC 9(002).                                                                                                   
+                15 LINK-NRO-CAJA        PIC 9(004).                                                                                                   
+                15 FILLER               PIC X(010).                                                                                                   
+             10 LINK-CONTINUACION       PIC 9(001).                                                                                                   
+             10 LINK-NRO-REGISTRO       PIC 9(004).                                                                                                   
+             10 LINK-LARGO-REGISTRO     PIC 9(004).                                                                                                   
+             10 LINK-INFO               PIC X(017).                                                                                                   
+             10 LINK-INFO-R             REDEFINES LINK-INFO.                                                                                          
+                15 LINK-NUM-COD-MSG     PIC 9(002).                                                                                                   
+                15 LINK-NUM-GLS-MSG     PIC 9(002).                                                                                                   
+                15 LINK-NUM-PRT         PIC 9(002).                                                                                                   
+                15 FILLER               PIC X(001).                                                                                                   
+                15 LINK-DESPUES-14H     PIC X(001).                                                                                                   
+                   88 LINK-SI-14H       VALUE 'S'.                                                                                                    
+                   88 LINK-NO-14H       VALUE 'N' , ' '.                                                                                              
+                15 LINK-ENVIA-MSG-GLOS  PIC X(001).                                                                                                   
+                15 LINK-FECHA-VERSION   PIC X(008).                                                                                                   
+             10 LINK-COD-RETORNO        PIC 9(003).                                                                                                   
+             10 LINK-LARGO              PIC 9(004).                                                                                                   
+          05 LINK-AREA-DATOS            PIC X(3987).                                                                                                  
+                                                                                                                                                      
+       LINKAGE SECTION.                                                                                                                               
+      *----------------                                                                                                                               
+       01 DFHCOMMAREA                  PIC X(4096).                                                                                                   
+                                                                                                                                                      
+       PROCEDURE DIVISION.                                                                                                                            
+      *===================                                                                                                                            
+       PRINCIPAL.                                                                                                                                     
+      *----------                                                                                                                                     
+           EXEC CICS HANDLE ABEND LABEL (9999-ABEND)                                                                                                  
+           END-EXEC.                                                                                                                                  
+           IF EIBCALEN = ZEROS                                                                                                                        
+              MOVE  CT-ERR-BUF TO WSO-GLS-RET                                                                                                         
+              MOVE  CT-03      TO WSO-COD-RET                                                                                                         
+              PERFORM 9000-TERMINO                                                                                                                    
+           ELSE                                                                                                                                       
+             PERFORM 1000-INICIO                                                                                                                      
+             IF WSO-COD-RET EQUAL CT-000                                                                                                              
+                PERFORM 2000-PROCESO                                                                                                                  
+             END-IF                                                                                                                                   
+           END-IF                                                                                                                                     
+           PERFORM 9000-TERMINO.                                                                                                                      
+                                                                                                                                                      
+       1000-INICIO.                                                                                                                                   
+      *-----------*                                                                                                                                   
+           INITIALIZE WSS-AREA-ENTRADA                                                                                                                
+                      VARIABLES-CONTROL                                                                                                               
+                                                                                                                                                      
+           MOVE DFHCOMMAREA     TO WS-LINK-AREA-TRANSFERENCIA                                                                                         
+           MOVE LINK-AREA-DATOS TO WSS-AREA-ENTRADA                                                                                                   
+                                                                                                                                                      
+           INITIALIZE WSS-AREA-SALIDA                                                                                                                 
+           MOVE ZEROES TO WSS-COD-RET                                                                                                                 
+                          WSO-COD-RET                                                                                                                 
+           MOVE SPACES TO WSS-GLS-RET                                                                                                                 
+                          WSO-GLS-RET                                                                                                                 
+                                                                                                                                                      
+           MOVE CT-NO TO WS-EOF                                                                                                                       
+                                                                                                                                                      
+           PERFORM 1100-VALIDA-ENTRADA.                                                                                                               
+                                                                                                                                                      
+SML2  *---------------------------------------------------------*                                                                                     
+SML2  * REALIZA VALIDACION DE RUT DE ENTRADA, PROVIENE DE PU    *                                                                                     
+SML2  * RUTINA BCCRBRUT CON PARTE NUMERICA LARGO 9 Y DV LARGO 1 *                                                                                     
+SML2  *---------------------------------------------------------*                                                                                     
+SML2   1100-VALIDA-ENTRADA.                                                                                                                           
+SML2  *--------------------                                                                                                                           
+SML2       IF ENT-RUT-NUM = SPACES OR ENT-RUT-DGV = SPACES                                                                                            
+SML2          MOVE CT-RUT-VACIO       TO WSO-GLS-RET                                                                                                  
+SML2          MOVE CT-99              TO WSO-COD-RET                                                                                                  
+SML2          PERFORM 9000-TERMINO                                                                                                                    
+SML2       ELSE                                                                                                                                       
+SML2          IF ENT-RUT-NUM IS NOT NUMERIC                                                                                                           
+SML2             MOVE CT-RUT-NO-NUMERICO TO WSO-GLS-RET                                                                                               
+SML2             MOVE CT-99              TO WSO-COD-RET                                                                                               
+SML2             PERFORM 9000-TERMINO                                                                                                                 
+SML2          ELSE                                                                                                                                    
+SML2             MOVE ENT-RUT-NUM TO VL-RUT                                                                                                           
+SML2             CALL CT-BCCRBRUT USING VLRUTWS                                                                                                       
+SML2             IF ENT-RUT-DGV NOT = VL-DIG                                                                                                          
+SML2                MOVE CT-RUT-INVALIDO    TO WSO-GLS-RET                                                                                            
+SML2                MOVE CT-99              TO WSO-COD-RET                                                                                            
+SML2                PERFORM 9000-TERMINO                                                                                                              
+SML2             END-IF                                                                                                                               
+SML2          END-IF                                                                                                                                  
+SML2       END-IF.                                                                                                                                    
+                                                                                                                                                      
+       2000-PROCESO.                                                                                                                                  
+      *------------*                                                                                                                                  
+           MOVE CT-2000-PROCESO  TO WS-NOMBRE-PARRAFO                                                                                                 
+           MOVE CT-0             TO WS-I                                                                                                              
+                                                                                                                                                      
+      *** Asigna valores recibidos por PU a llave                                                                                                     
+           MOVE ENT-RUT-NUM TO SRBYNOPV-NRT-LLP                                                                                                       
+           MOVE ENT-RUT-DGV TO SRBYNOPV-DRT-LLP                                                                                                       
+           MOVE ENT-IDE-OPE TO SRBYNOPV-IDE-OPE-LLP                                                                                                   
+SML2       MOVE ENT-SUC     TO SRBYNOPV-SUC-LLP                                                                                                       
+SML2       MOVE ENT-MDA     TO SRBYNOPV-MDA-LLP                                                                                                       
+SML2       MOVE ENT-COD-CPD TO SRBYNOPV-COD-CPD-LLP                                                                                                   
+SML2       MOVE ENT-APC     TO SRBYNOPV-APC-LLP                                                                                                       
+SML        MOVE ENT-MARCA   TO SRBYNOPV-MAR-LLP                                                                                                       
+                                                                                                                                                      
+           EXEC CICS STARTBR DATASET   (CT-SRBVMOI)                                                                                                   
+                             RIDFLD    (SRBYNOPV-KEY)                                                                                                 
+                             KEYLENGTH (LARGO-KEY)                                                                                                    
+                             NOHANDLE                                                                                                                 
+           END-EXEC                                                                                                                                   
+                                                                                                                                                      
+           EVALUATE EIBRESP                                                                                                                           
+              WHEN DFHRESP(NORMAL)                                                                                                                    
+                   PERFORM 2100-READNEXT-SRBVMOI                                                                                                      
+SML2               PERFORM 6400-TEMPORAL UNTIL  WS-I = CT-26 OR                                                                                       
+                                           WS-EOF = CT-SI OR                                                                                          
+                              ENT-RUT-NUM NOT EQUAL SRBYNOPV-NRT-DDR                                                                                  
+                   MOVE WS-I TO SAL-CAN-REG                                                                                                           
+                   EXEC CICS ENDBR                                                                                                                    
+                             DATASET (CT-SRBVMOI)                                                                                                     
+                             NOHANDLE                                                                                                                 
+                   END-EXEC                                                                                                                           
+                   PERFORM 9998-EVALUA-CICS                                                                                                           
+              WHEN DFHRESP(NOTFND)                                                                                                                    
+                   MOVE CT-SI TO WS-EOF                                                                                                               
+              WHEN DFHRESP(ENDFILE)                                                                                                                   
+                   CONTINUE                                                                                                                           
+              WHEN DFHRESP(NOTFND)                                                                                                                    
+                   CONTINUE                                                                                                                           
+              WHEN OTHER                                                                                                                              
+                   MOVE CT-ERR-START        TO WSO-GLS-RET                                                                                            
+                   MOVE EIBRESP             TO WS-EIBRESP                                                                                             
+                   MOVE CT-99               TO WSO-COD-RET                                                                                            
+                   PERFORM 9000-TERMINO                                                                                                               
+           END-EVALUATE                                                                                                                               
+                                                                                                                                                      
+SML2       IF WS-I = CT-26 AND WS-EOF EQUAL CT-NO                                                                                                     
+              MOVE CT-1 TO WS-HAY-MAS                                                                                                                 
+                        SAL-IND-MAS                                                                                                                   
+              MOVE WSS-ULT-LLV-SOL TO SAL-ULT-LLV-SOL-R                                                                                               
+           END-IF.                                                                                                                                    
+                                                                                                                                                      
+       2100-READNEXT-SRBVMOI.                                                                                                                         
+      *--------------------*                                                                                                                          
+           MOVE CT-2100-READNEXT-SRBVMOI TO WS-NOMBRE-PARRAFO                                                                                         
+           EXEC CICS READNEXT DATASET   (CT-SRBVMOI)                                                                                                  
+                              INTO      (SRBYNOPV-REG)                                                                                                
+                              LENGTH    (LARGO-REG)                                                                                                   
+                              RIDFLD    (SRBYNOPV-KEY)                                                                                                
+                              KEYLENGTH (LARGO-KEY)                                                                                                   
+                              NOHANDLE                                                                                                                
+           END-EXEC.                                                                                                                                  
+                                                                                                                                                      
+           EVALUATE EIBRESP                                                                                                                           
+              WHEN DFHRESP(NORMAL)                                                                                                                    
+                   CONTINUE                                                                                                                           
+              WHEN DFHRESP(NOTFND)                                                                                                                    
+                   CONTINUE                                                                                                                           
+              WHEN DFHRESP(EOF)                                                                                                                       
+                   CONTINUE                                                                                                                           
+              WHEN DFHRESP(ENDFILE)                                                                                                                   
+                   MOVE CT-SI               TO WS-EOF                                                                                                 
+              WHEN OTHER                                                                                                                              
+                   MOVE CT-ERR-READ         TO WSO-GLS-RET                                                                                            
+                   MOVE EIBRESP             TO WS-EIBRESP                                                                                             
+                   MOVE CT-99               TO WSO-COD-RET                                                                                            
+                   PERFORM 9000-TERMINO                                                                                                               
+           END-EVALUATE.                                                                                                                              
+                                                                                                                                                      
+       6100-CALCULA-CAMPO-EXPOSIC.                                                                                                                    
+      *---------------------------*                                                                                                                   
+           COMPUTE WS-EXPOSICION =                                                                                                                    
+                   SRBYNOPV-DEU-TOT-ATV * SRBYNOPV-ESN-ICU.                                                                                           
+                                                                                                                                                      
+       6200-OBTENER-PE.                                                                                                                               
+      *---------------*                                                                                                                               
+           EVALUATE SRBYNOPV-CRB                                                                                                                      
+              WHEN CT-A1                                                                                                                              
+                 MOVE  CT-003600  TO WS-PE                                                                                                            
+              WHEN CT-A2                                                                                                                              
+                 MOVE  CT-008250  TO WS-PE                                                                                                            
+              WHEN CT-A3                                                                                                                              
+                 MOVE  CT-021875  TO WS-PE                                                                                                            
+              WHEN CT-A4                                                                                                                              
+                 MOVE  CT-175000  TO WS-PE                                                                                                            
+              WHEN CT-A5                                                                                                                              
+                 MOVE  CT-427500  TO WS-PE                                                                                                            
+              WHEN CT-A6                                                                                                                              
+                 MOVE  CT-900000  TO WS-PE                                                                                                            
+              WHEN CT-B1                                                                                                                              
+                 MOVE  CT-1387500 TO WS-PE                                                                                                            
+              WHEN CT-B2                                                                                                                              
+                 MOVE  CT-2035000 TO WS-PE                                                                                                            
+              WHEN CT-B3                                                                                                                              
+                 MOVE  CT-3217500 TO WS-PE                                                                                                            
+              WHEN CT-B4                                                                                                                              
+                 MOVE  CT-4387500 TO WS-PE.                                                                                                           
+                                                                                                                                                      
+       6300-CALCULO-EAP.                                                                                                                              
+      *-----------------*                                                                                                                             
+           COMPUTE WS-EAP = SRBYNOPV-DEU-TOT-ATV - SRBYNOPV-MNT-GTZ-RIE.                                                                              
+                                                                                                                                                      
+       6400-TEMPORAL.                                                                                                                                 
+      *-----------------*                                                                                                                             
+           IF SRBYNOPV-CRB NOT = CT-GR                                                                                                                
+              ADD CT-1                      TO WS-I                                                                                                   
+              PERFORM 2300-MOVER-SALIDA                                                                                                               
+              MOVE SRBYNOPV-KEY             TO WSS-ULT-LLV-SOL                                                                                        
+              PERFORM 2100-READNEXT-SRBVMOI                                                                                                           
+           ELSE                                                                                                                                       
+              PERFORM 2100-READNEXT-SRBVMOI                                                                                                           
+              CONTINUE                                                                                                                                
+           END-IF.                                                                                                                                    
+                                                                                                                                                      
+       2300-MOVER-SALIDA.                                                                                                                             
+      *-----------------*                                                                                                                             
+      *** Asigna valores desde archivo a campos de salida                                                                                             
+           MOVE SRBYNOPV-IDE-OPE            TO SAL-IDOPER(WS-I)                                                                                       
+           MOVE SRBYNOPV-CRB                TO SAL-CLASIF(WS-I)                                                                                       
+           MOVE SRBYNOPV-NRT-AVA            TO SAL-NRUT-AVAL(WS-I)                                                                                    
+           MOVE SRBYNOPV-DRT-AVA            TO SAL-DV-AVAL(WS-I)                                                                                      
+           MOVE SRBYNOPV-TIP-AVA            TO SAL-TIPO-AVAL(WS-I)                                                                                    
+           MOVE SRBYNOPV-DEU-TOT-ATV        TO SAL-TDEUACT(WS-I)                                                                                      
+                                                                                                                                                      
+           PERFORM 6100-CALCULA-CAMPO-EXPOSIC                                                                                                         
+                                                                                                                                                      
+           MOVE WS-EXPOSICION               TO SAL-EXPOSICION (WS-I)                                                                                  
+           MOVE SRBYNOPV-FML                TO SAL-FAMILIA (WS-I)                                                                                     
+           MOVE SRBYNOPV-COD-CTR            TO SAL-CARTERA (WS-I)                                                                                     
+                                                                                                                                                      
+           PERFORM 6200-OBTENER-PE                                                                                                                    
+                                                                                                                                                      
+           MOVE WS-PE                       TO SAL-PE (WS-I)                                                                                          
+                                                                                                                                                      
+           PERFORM 6300-CALCULO-EAP                                                                                                                   
+                                                                                                                                                      
+           MOVE WS-EAP                    TO SAL-EAP (WS-I)                                                                                           
+           MOVE SRBYNOPV-PVS-APC          TO SAL-PROAPL (WS-I)                                                                                        
+           MOVE SRBYNOPV-MNT-DDC-GAR-FNR  TO SAL-MON-DED-GAR-FIN (WS-I)                                                                               
+           MOVE SRBYNOPV-MNT-MRG-GAR-RAL  TO SAL-MONGARE (WS-I)                                                                                       
+           MOVE SRBYNOPV-MNT-DDC-AVA-FZA                                                                                                              
+                                          TO SAL-MON-DED-AVA-FIAN(WS-I)                                                                               
+SML2       MOVE SRBYNOPV-OFI              TO SAL-SUC (WS-I)                                                                                           
+SML2       MOVE SRBYNOPV-MON              TO SAL-MDA (WS-I)                                                                                           
+SML2       MOVE SRBYNOPV-COD-CPD          TO SAL-COD-CPD (WS-I)                                                                                       
+SML2       MOVE SRBYNOPV-APC              TO SAL-APC (WS-I)                                                                                           
+SML2       MOVE SRBYNOPV-MAR              TO SAL-MAR (WS-I).                                                                                          
+                                                                                                                                                      
+       9000-TERMINO.                                                                                                                                  
+      *-------------*                                                                                                                                 
+           MOVE CT-9000-TERMINO   TO  WS-NOMBRE-PARRAFO                                                                                               
+           INITIALIZE DFHCOMMAREA                                                                                                                     
+           IF WSO-COD-RET = ZEROES                                                                                                                    
+              MOVE ZEROES           TO LINK-COD-RETORNO                                                                                               
+              MOVE WS-SALIDA-REDEF  TO LINK-AREA-DATOS                                                                                                
+              MOVE WS-I             TO LINK-NRO-REGISTRO                                                                                              
+              MOVE CT-LINK-LARGO    TO LINK-LARGO                                                                                                     
+SML2          MOVE CT-146           TO LINK-LARGO-REGISTRO                                                                                            
+              MOVE WS-HAY-MAS       TO LINK-CONTINUACION                                                                                              
+                                       SAL-IND-MAS                                                                                                    
+           ELSE                                                                                                                                       
+              MOVE CT-900            TO LINK-COD-RETORNO                                                                                              
+              MOVE CT-1              TO LINK-NUM-COD-MSG                                                                                              
+              MOVE CT-1              TO LINK-NUM-GLS-MSG                                                                                              
+              MOVE WSO-GLS-RET       TO WSS-GLS-RET                                                                                                   
+              MOVE WSO-COD-RET       TO WSS-COD-RET                                                                                                   
+              MOVE WSS-DATOS-CONTROL TO LINK-AREA-DATOS                                                                                               
+              MOVE ZEROES            TO LINK-LARGO                                                                                                    
+           END-IF                                                                                                                                     
+           MOVE WS-LINK-AREA-TRANSFERENCIA TO DFHCOMMAREA                                                                                             
+           EXEC CICS                                                                                                                                  
+                RETURN                                                                                                                                
+           END-EXEC.                                                                                                                                  
+                                                                                                                                                      
+       9998-EVALUA-CICS.                                                                                                                              
+      *-----------------*                                                                                                                             
+           MOVE CT-9998-EVALUA-CICS         TO  WS-NOMBRE-PARRAFO                                                                                     
+           EVALUATE EIBRESP                                                                                                                           
+              WHEN DFHRESP(NORMAL)                                                                                                                    
+                   CONTINUE                                                                                                                           
+              WHEN OTHER                                                                                                                              
+                    MOVE EIBRESP        TO WS-EIBRESP                                                                                                 
+                    MOVE WS-EIBRESP-COD TO WSO-COD-RET                                                                                                
+                    MOVE WS-NOMBRE-PARRAFO TO WSO-GLS-RET                                                                                             
+                   PERFORM 9000-TERMINO                                                                                                               
+           END-EVALUATE.                                                                                                                              
+                                                                                                                                                      
+                                                                                                                                                      
+       9999-ABEND.                                                                                                                                    
+      *-------------------*                                                                                                                           
+           EXEC CICS ASSIGN ABCODE    (WS-COD-ABEND)                                                                                                  
+                            ABPROGRAM (WS-PGM-ABEND)                                                                                                  
+                            NOHANDLE                                                                                                                  
+           END-EXEC                                                                                                                                   
+                                                                                                                                                      
+           EVALUATE EIBRESP                                                                                                                           
+               WHEN DFHRESP(NORMAL)                                                                                                                   
+                    MOVE CT-001                 TO WSO-COD-RET                                                                                        
+                    MOVE WS-MSG-ABEND           TO WSO-GLS-RET                                                                                        
+               WHEN OTHER                                                                                                                             
+                    MOVE CT-001                 TO WSO-COD-RET                                                                                        
+                    MOVE CT-ERR-ASS-ABCODE      TO WSO-GLS-RET                                                                                        
+           END-EVALUATE.                                                                                                                              
+           PERFORM 9000-TERMINO.                                                                                                                      
+                                                                                                                                                      

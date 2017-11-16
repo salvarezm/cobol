@@ -1,0 +1,408 @@
+//TCNJ9999    JOB ,,CLASS=A,MSGCLASS=0,MSGLEVEL=(1,1),COND=(0,NE)                                   
+//*------------------------------------------------------------------*//                            
+//* INSTITUCION       : BANCO DEL ESTADO DE CHILE                    *//                            
+//* ENCARGADO BANCO   : PATRICIO VARGAS                              *//                            
+//* ANALISTA          : RAUL MEZA                                    *//                            
+//* PROGRAMADOR       : SEBASTIAN MORALES LISBOA                     *//                            
+//* FECHA DE CREACION : 26 DE NOVIEMBRE 2012                         *//                            
+//* OBJETIVO          : TERCER PROCESO DE RESPALDO TCN               *//                            
+//*------------------------------------------------------------------*//                            
+//* HISTORIAL DE MODIFICACIONES                                      *//                            
+//*------------------------------------------------------------------*//                            
+//* FECHA DE MODIFICACION: 06/04/2015                                *//                            
+//* RESPONSABLE          : JUAN ZUNIGA                               *//                            
+//* OBSERVACIONES :STEP0180 SE AGREGA ARCHIVO:                       *//                            
+//*                PTCN.NW.TCNJ1600.TARJ.INAC                        *//                            
+//*------------------------------------------------------------------*//                            
+//* FECHA DE MODIFICACION: 10/03/2015                                *//                            
+//* RESPONSABLE          : MATIAS CAMBLOR A.                         *//                            
+//* OBSERVACIONES :STEP0190 SE ELIMINAN ARCHIVOS:                    *//                            
+//*                PTCN.NW.P39%DIAHOY07.1.O683DAT.OK                 *//                            
+//*                PTCN.NW.P39%MESUHA24.1.O683DAT.OK                 *//                            
+//*------------------------------------------------------------------*//                            
+//JOBLIB    DD  DSN=DB2.V101.DB2A.SDSNEXIT,DISP=SHR                                                 
+//          DD  DSN=DB2.V101.DB2A.SDSNLOAD,DISP=SHR                                                 
+//          DD  DSN=DB2.V101.DB2A.RUNLIB.LOAD,DISP=SHR                                              
+//          DD  DSN=EXPL.BATCH.LOADLIB,DISP=SHR                                                     
+//          DD  DSN=EXPL.INGESIST.LOADLIB,DISP=SHR                                                  
+//MYPROC   JCLLIB ORDER=EXPL.PROCLIB.UTILITY                                                        
+//*------------------------------------------------------------------*//                            
+//* RESPALDO DE ARCHIVO LOGNEXUS - ESPECIAL PARA EVITAR CONTENCION   *//                            
+//*------------------------------------------------------------------*//                            
+//STEP0010     EXEC PGM=ADRDSSU,REGION=32M                                                          
+//SYSPRINT DD SYSOUT=X                                                                              
+//SYSIN   DD *                                                                                      
+  COPY                                            -                                                 
+        DS(INCL(                                  -                                                 
+           PTCR.VM.LOGNEXUS.MAESTRO               -                                                 
+                       ))                         -                                                 
+       RENUNC((PTCR.VM.LOGNEXUS.MAESTRO,          -                                                 
+               PTCN.FC.RET090.TCN65.LOGNX010))    -                                                 
+       FCNOCOPY FCTOPPRCP                         -                                                 
+       ALLD(*) ALLEXCP CANCELERROR  SPHERE TOL(ENQF)                                                
+                                                                                                    
+/*                                                                                                  
+//*------------------------------------------------------------------*//                            
+//* BORRADO DE ARCHIVOS CON DATA DE TABLAS DB2                                                      
+//*------------------------------------------------------------------*//                            
+//STEP0020     EXEC PGM=IDCAMS                                                                      
+//SYSPRINT     DD SYSOUT=*                                                                          
+//SYSIN        DD *                                                                                 
+       DELETE (                                   -                                                 
+                PTCN.NP.TCNJ9999.T343CTA.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343CTL.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343FDE.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343FRE.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343IPE.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343RCV.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343SOL.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343TAR.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343TRL.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343TNS.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343TPE.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343TRN.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343TRX.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343BTC.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343EQV.UNLOAD   -                                                 
+                PTCN.NP.TCNJ9999.T343LOG.UNLOAD   -                                                 
+       ) PURGE NONVSAM                                                                              
+   SET MAXCC = 0                                                                                    
+/*                                                                                                  
+//*------------------------------------------------------------------*//                            
+//STEP0030 EXEC PROC=TCN9999A         (EXTRACT CTA - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0040 EXEC PROC=TCN9999B         (EXTRACT CTL - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0050 EXEC PROC=TCN9999C         (EXTRACT FDE - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0060 EXEC PROC=TCN9999D         (EXTRACT FRE - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0070 EXEC PROC=TCN9999E         (EXTRACT IPE - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0080 EXEC PROC=TCN9999F         (EXTRACT RCV - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0090 EXEC PROC=TCN9999G         (EXTRACT SOL - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0100 EXEC PROC=TCN9999H         (EXTRACT TAR - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0110 EXEC PROC=TCN9999I         (EXTRACT TRL - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0120 EXEC PROC=TCN9999J         (EXTRACT TNS - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0130 EXEC PROC=TCN9999K         (EXTRACT TPE - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0140 EXEC PROC=TCN9999L         (EXTRACT TRN - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0150 EXEC PROC=TCN9999M         (EXTRACT TRX - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0160 EXEC PROC=TCN9999N         (EXTRACT BTC - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0170 EXEC PROC=TCN9999O         (EXTRACT EQV - 343)                                           
+//*------------------------------------------------------------------*//                            
+//STEP0175 EXEC PROC=TCN9999P         (EXTRACT LOG - 343)                                           
+//*------------------------------------------------------------------*//                            
+//* RESPALDO DE ARCHIVOS DE PROCESO TCN                              *//                            
+//*------------------------------------------------------------------*//                            
+//STEP0180     EXEC PGM=ADRDSSU                                                                     
+//SYSPRINT     DD SYSOUT=*                                                                          
+//BKP          DD DSN=PTCN.CR.RET090.TCNJ9999.ARCHIVOS.F%DIAHOY01,                                  
+//             DISP=(NEW,CATLG,DELETE),RECFM=VB,LABEL=(1,SL),                                       
+//             LRECL=32756,BLKSIZE=32760,UNIT=CART,VOL=(,,,20)                                      
+//SYSIN        DD *                                                                                 
+  DUMP                                                 -                                            
+       DATASET(INCLUDE(                                -                                            
+               PTCN.NW.ANE%DIAANT07.1.O683DAT.OK       -                                            
+               PTCN.NW.ANE%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.CBA%DIAANT07.1.O683DAT.OK       -                                            
+               PTCN.NW.CBA%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.D33%DIAANT07.1.O683DAT.OK       -                                            
+               PTCN.NW.DEM%DIAANT07.1.O683DAT.OK       -                                            
+               PTCN.NW.DEM%DIAANT07.4.O683DAT.OK       -                                            
+               PTCN.NW.DEM%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.DEM%DIAHOY07.4.O683DAT.OK       -                                            
+               PTCN.NW.FMC%DIAANT07.1.O683DAT.OK       -                                            
+               PTCN.NW.FMC%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.FVC%DIAANT07.1.O683DAT.OK       -                                            
+               PTCN.NW.FVC%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.INP%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.LSN%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.MCF%DIAANT2H.1.O683DAT.OK       -                                            
+               PTCN.NW.MCF%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.MON%DIAANT07.1.O683DAT.OK       -                                            
+               PTCN.NW.MON%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.P39%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.REN%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.SUM%DIAANT2H.1.O683DAT.OK       -                                            
+               PTCN.NW.SUM%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.SUV%DIAANT2H.1.O683DAT.OK       -                                            
+               PTCN.NW.TXP%DIAANT2H.1.O683DAT.OK       -                                            
+               PTCN.NW.TXP%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.TCNJ2418.INTERF.DEMINCI         -                                            
+               PTCN.NW.SUV%DIAHOY07.1.O683DAT.OK       -                                            
+               PTCN.NW.TCNJ4424.SAL1INC.MCF            -                                            
+               PTCN.NW.NOVED.BCC                       -                                            
+               PTCN.NW.TCNJ4424.SAL1INC.EMB            -                                            
+               PTCN.NW.TCNJ4424.SAL2INC.MCF            -                                            
+               PTCN.NW.ARCHIVO.INC                     -                                            
+               PTCR.NW.EMISION.SOBRES                  -                                            
+               PTCN.NW.SAL1INC.MCF                     -                                            
+               PTCN.NW.TCNJ4436.LISCUA.CTA             -                                            
+               PTCN.NW.TCNJ4436.LISCUA.TAR             -                                            
+               PTCN.NW.TXNERR.O683DAT.OK               -                                            
+               PTCN.NM.CUENTA                          -                                            
+               PTCN.NM.TARJETA                         -                                            
+               PTCN.NW.TCNJ4488.LISCUA.TRN             -                                            
+               PTCN.NM.PASO.ESTADO                     -                                            
+               PTCN.NM.PASO.ESTADO.LOG                 -                                            
+               PTCN.NN.PASO.ESTADO.MYP                 -                                            
+               PTCN.NW.CUSTODIA                        -                                            
+               PTCN.NW.TCNJ1297.CUS.INC                -                                            
+               PTCN.NM.PASO.TCNJ4410.PASO0010          -                                            
+               PTCN.NM.TCNJ4448.SUBSI.TOTAL            -                                            
+               PTCN.NW.SUBSI.T03                       -                                            
+               PTCN.NV.ITE.A001                        -                                            
+               PTCN.NV.ITE.A002                       -                                             
+               PTCN.NV.ITE.A003                        -                                            
+               PTCN.NW.SUBSIDIA.CTC                    -                                            
+               PTCN.NM.TARJETA.VENCIDA                 -                                            
+               PTCN.G.TCR.NW.NOVOP.VENCIDAS            -                                            
+               PTCN.NN.TCR.SIG                         -                                            
+               PTCN.NW.ESTADO.DEUDAS.DIA               -                                            
+               PTCN.NM.TRN.PLANO                       -                                            
+               PTCN.NM.IFRS1.TCR.DETER                 -                                            
+               PTCN.NN.TCR.CTB                         -                                            
+               PTCN.NW.TRX.PASO.DIA                    -                                            
+               PTCN.NN.D30.DEU                         -                                            
+               PTCN.NW.TCNJEM0A.EMASIVAS               -                                            
+               PTCN.NW.EVMA.DIARIO.FTP                 -                                            
+               PTCN.NW.RESUL.EVMA.RECEP                -                                            
+               PTCN.NW.TCNJ093.FTPTCC                  -                                            
+               PTCN.NW.TCNJ093.DIACCL                  -                                            
+               PTCN.NW.PASO350.SAL1INC                 -                                            
+               PTCN.NW.TCNJ093.EMISLOTA.OK             -                                            
+               PTCN.NW.TCNJ093.EMISION.CLI             -                                            
+               PTCN.NW.TCNJ093.LISTADO.CLI             -                                            
+               PTCN.NW.NOVEDAD.BCC                     -                                            
+               PTCN.NW.SOLIC.TARJ.PREEMBO              -                                            
+               PTCN.NM.DESCAR.SOL                      -                                            
+               PTCN.NW.PAT.DIARIO                      -                                            
+               PTCN.NW.FECHAS.CALENF                   -                                            
+               PTCN.NN.C40S                            -                                            
+               PTCN.NN.C40ST                           -                                            
+               PTCN.NN.C08                             -                                            
+               PTCN.NN.C08T                            -                                            
+               PTCN.NN.TODASTCR                        -                                            
+               PTCN.NN.EDE                             -                                            
+               PTCN.NN.EDEDIA                          -                                            
+               PTCN.NM.ADICIO.NALES                    -                                            
+               PTCN.NW.TARJETAS.BLQ                    -                                            
+               PTCN.NW.BLQHIST.ATM                     -                                            
+               PTCN.NW.ESI.MICROEM                     -                                            
+               PTCN.NM.SALIDA.VTU                      -                                            
+               PTCN.NW.NORMALIZ                        -                                            
+               PTCN.NW.NORMALIZ.STOCK                  -                                            
+               PTCN.NW.PAGOS.CHEQUERA                  -                                            
+               PTCN.NW.TCNJ2374.CARGOS.CTC             -                                            
+               PTCN.NW.PAGOS.AUTOMA                    -                                            
+               PTCN.NW.MORA.DIAANT                     -                                            
+               PTCN.NW.MORA.ACTUAL                     -                                            
+               PTCN.NW.TCNJ2334.PAGOS.AVANCES          -                                            
+               PTCN.NW.PAGOS.SOLO.MORA                 -                                            
+               PTCN.NW.ITF.NOVEDAD.FINAL               -                                            
+               PTCN.NM.IFRS1.TCR.SRT                   -                                            
+               PTCN.NM.IFRS2.TCR                       -                                            
+               PTCN.NW.ESTADO.MYPES                    -                                            
+               PTCN.NN.TARJETAS.MOROSAS                -                                            
+               PTCN.NW.MYPES.ESI                       -                                            
+               PTCN.NM.TCR.NONVSAM                     -                                            
+               PTCN.NW.TCNJ2346.MONETAR.CARGCONV       -                                            
+               PTCN.NW.TCNJ2346.COMISION.PAC           -                                            
+               PTCN.NW.TCNJ2344.MONETAR.CARGCONV       -                                            
+               PTCN.NW.TCNJ2344.COMISION.PAC           -                                            
+               PTCN.NW.TCNJ2310.SAFATM                 -                                            
+               PTCN.NW.PAGAVAN.INDEXADO.RESP           -                                            
+               PTCN.NW.TCNJ2316.PAGYAVA.PLN            -                                            
+               PTCN.NW.TCNJ2316.PAGYAVA.REF            -                                            
+               PTCN.NW.TCNJ2316.PAGYAVA.REP            -                                            
+               PTCN.NW.TCNJ2316.TCNACEPT.MBCO          -                                            
+               PTCN.NW.TCNJ2316.RESPAGOS.MBCO          -                                            
+               PTCN.NW.CINTACAF.PASO.ESDS              -                                            
+               PTCN.NW.TCNJ2324.SALDO.ACREEDOR         -                                            
+               PTCN.NW.TCNJ2324.SLDOACR.CRE            -                                            
+               PTCN.NW.TCNJ2324.SALDO.ACREEDOR.PESOS   -                                            
+               PTCN.NW.TCNJ2324.SALDO.ACREEDOR.DOLAR03 -                                            
+               PTCN.NW.TCNJ2318.REPAC.CTAS             -                                            
+               PTCN.NW.TCNJ2334.PAGYAVA.PLN            -                                            
+               PNOR.NW.PAGOS.TCR                       -                                            
+               PTCN.NW.TCNJ2334.PAGYAVA.ALL            -                                            
+               PTCN.NW.TCNJ2334.PAGYAVA.DEB            -                                            
+               PTCN.NW.TCNJ2334.PAGYAVA                -                                            
+               PTCN.NW.TCNJ2342.NOTAS.CREYDEV          -                                            
+               PTCN.NW.TCNJ2350.MONETAR.OK             -                                            
+               PTCN.NW.TCNJ2354.CARGOS.TOT             -                                            
+               PTCN.NW.TCNJ2358.CARGOS.RECEPCIO.CHQ    -                                            
+               PTCN.NW.TCNJ2358.CARGOS.CHEQUERA        -                                            
+               PTCN.NW.TCNJ2358.INYECTOR.TCNCHQ        -                                            
+               PTCN.NW.TCNJ2358.INYECTOR.PAREAD        -                                            
+               PTCN.NW.TCNJ2334.PAGYAVA.MON.CRED       -                                            
+               PTCN.NW.TCNJ2338.CREDITO.DEB            -                                            
+               PTCN.NW.CARGOS.TOT                      -                                            
+               PTCN.NW.MOVCCTE.INFCOMP                 -                                            
+               PTCN.VW.CARGOS.TOT                      -                                            
+               PTCN.VW.ABONOS.TOT                      -                                            
+               PTCN.VW.CARGOS.CTC                      -                                            
+               PTCN.VW.ABONOS.CTC                      -                                            
+               PTCN.NW.TCNJ2358.INYECTOR.PAREAD        -                                            
+               PTCN.NW.TCNJ2354.CARGOS.RECHAZOS        -                                            
+               PTCN.NW.TCNJ2358.CARGOS.RECHACHQ        -                                            
+               PTCN.NW.SALIDA.CBA.TOTAL                -                                            
+               PTCN.VW.JOUATM.INDEXADO                 -                                            
+               PTCN.VW.SAFATM.PAGOS.AVANCES            -                                            
+               PTCN.NW.TCNJ2322.MON.REPAC              -                                            
+               PTCN.NW.TCNJ2330.MONETAR.COBADM         -                                            
+               PTCN.NW.TCNJ2380.MONETAR.CBAVTU         -                                            
+               PTCN.NW.TCNJ2381.MONETAR.CBAVTU         -                                            
+               PTCN.NW.TCNJ2382.MONETAR.CBAVTU         -                                            
+               PTCN.NW.TCNJ2383.MONETAR.CBAVTU         -                                            
+               PTCN.NW.TCNJ2384.MONETAR.CBAVTU         -                                            
+               PTCN.NM.FACTUR.BACKUP                   -                                            
+               PTCN.NW.D34                             -                                            
+               PTCN.NW.D34T                            -                                            
+               PTCN.NW.DEM%DIAHOY07.2.O683DAT.OK       -                                            
+               PTCN.NW.MON%DIAHOY07.2.O683DAT.OK       -                                            
+               PTCN.NW.TRN.PLANO.OUT.TOT               -                                            
+               PTCN.NN.DEM1.O683TEC.DAT                -                                            
+               PTCN.NN.DEM1.O683TEC.DAT.OK             -                                            
+               PTCN.NN.ANE1.O683TEC.DAT                -                                            
+               PTCN.NW.TCNJ2350.MONETAR.TEC            -                                            
+               PTCN.NW.MONETAR.O683DAT.TECNO           -                                            
+               PTCN.NN.MONETAR.O683DAT.TEC             -                                            
+               PTCN.NN.DOL1.O683TEC.DAT                -                                            
+               PTCN.NN.OFI1.O683TEC.DAT                -                                            
+               PTCN.NN.TXP1.O683TEC.DAT                -                                            
+               PTCN.NW.TXP.TCNJ7002.TEC                -                                            
+               PTCN.NW.TXP.TCNJ448C.NEX                -                                            
+               PTCN.NN.MCF1.O683TEC.DAT                -                                            
+               PTCN.NW.TCNJ7000.DIARIOT                -                                            
+               PTCN.NW.TCNJ441C.DIARION                -                                            
+               PTCN.NN.SUV1.O683TEC.DAT                -                                            
+               PTCN.NW.TCNJ7004.SUBSID.SUV             -                                            
+               PTCN.NW.TCNJ444C.SUBSID.SUM             -                                            
+               PTCN.NN.LSN1.O683TEC.DAT                -                                            
+               PTCN.NN.DEM1.O683TEC.TOT                -                                            
+               PTCN.NW.ANEXUS.O683DAT                  -                                            
+               PTCN.NW.ANETEC.O683DAT                  -                                            
+               PTCN.NW.TCNJ2350.MONETAR.NEX            -                                            
+               PTCN.NW.TCNJ7009.DESENCP                -                                            
+               PTCN.NW.TCNJ7003.DESENCP                -                                            
+               PTCN.NW.INP1.O683DAT.OK                 -                                            
+               PTCN.NW.TCNJ7025.INPNEXUS               -                                            
+               PTCN.NW.TCNJ7025.INPTECNO               -                                            
+               PTCN.NW.INPF.O683CTR.OK                 -                                            
+               PTCN.NW.TRX.PASO.DIA2                   -                                            
+               PTCN.NM.TCNJ8211.T343CTA.DTWH.NOVEDAD   -                                            
+               PTCN.NM.TCNJ8221.T343TAR.DTWH.NOVEDAD   -                                            
+               PTCN.NM.TCNJ8230.T343TRN.DTWH.INTERFAZ  -                                            
+               PTCN.NM.TCNJ8240.T343FRE.DTWH.INTERFAZ  -                                            
+               PTCN.NM.TCNJ8250.T343FDE.DTWH.INTERFAZ  -                                            
+               PTCN.NM.TCNJ1161.T343TALL.DTWH.NOVEDAD  -                                            
+               PTCN.NM.TCNJ8201.T343CTA.DTWH.ANTERIOR  -                                            
+               PTCN.NM.TCNJ8201.T343TAR.DTWH.ANTERIOR  -                                            
+               PTCN.NM.TCNJ8201.T343TRN.DTWH.ANTERIOR  -                                            
+               PTCN.NM.TCNJ8201.T343FRE.DTWH.ANTERIOR  -                                            
+               PTCN.NM.TCNJ8201.T343FDE.DTWH.ANTERIOR  -                                            
+               PTCN.NM.TCNJ1101.T343TALL.DTWH.ANTERIOR -                                            
+               PTCN.NN.TCNJ2340.STEP020.RCH.TBK        -                                            
+               PTCN.NW.CARGOS.CTC.VUELTA               -                                            
+               PTCN.NW.TCNJ2358.RCHCHQ.PRETCN          -                                            
+               PTCN.NW.TCNJ2354.RCHCTC.PRETCN          -                                            
+               PTCN.NW.TCNJ2359.RCHCTC.PAC             -                                            
+               PTCN.NW.TCNJ2370.RCHCHQ.PAT             -                                            
+               PTCN.NW.TCNJ2341.RCHTBK.PAT             -                                            
+               PTCN.NW.TCNJ2361.SEMAIL                 -                                            
+               PTCN.NW.TCNJ2361.TOT.ACT                -                                            
+               PTCN.NW.TCNJ2368.RCH.MEN.CARTA.SORT     -                                            
+               PTCN.NW.TCNJ2367.RCH.PAT                -                                            
+               PTCN.NW.TCNJ2367.RCH.PAC                -                                            
+               PTCN.NW.TCNJ2367.INCIDEN                -                                            
+               PTCN.NW.SALIDA.RECHAZOS.TRANSBNK        -                                            
+               PTCN.NW.SALIDA.RECHAZOS.CHEQUERA        -                                            
+               PTCN.NW.SALIDA.RECHAZOS.CUENTA          -                                            
+               PTCN.NW.SALIDA.PAGOS.CHEQUERA           -                                            
+               PTCN.NW.SALIDA.PAGOS.CUENTA             -                                            
+               PTCN.NW.NXS.PUNTJE6.O683DAT.OK          -                                            
+               PTCN.NW.NXS.ABONO6.O683DAT.OK           -                                            
+               PTCN.NN.TCN.TRANS.TCNJ8001              -                                            
+               PTCN.NW.TCN.CLIENTE.TCNJ8001.OK         -                                            
+               PTCN.NW.TCNJ1315.COMEINT                -                                            
+               PTCN.NW.TCNJ7007.DESENCR.VALFVC         -                                            
+               PTCN.NW.TCNJ7007.DESENCR.VALFMC         -                                            
+               PTCN.NW.AIN%DIAANT07.1.O683DAT.OK       -                                            
+               PTCN.NW.V33%DIAANT07.1.O683DAT.OK       -                                            
+               PTCN.NM.INTER.RECHAZOD.DIAHOY           -                                            
+               PTCN.NW.INCI                            -                                            
+               PTCN.NW.TCNJ1297.CUS.INC                -                                            
+               PTCN.NW.INP%DIAHOY07.6.O683DAT.OK       -                                            
+               PTCN.NW.MON%DIAHOY07.6.O683DAT.OK       -                                            
+               PTCN.NW.TCNJ8006.NOTAS.CREYDEV          -                                            
+               PTCN.NW.TCNJ8007.INPF.O683CTR.OK        -                                            
+               PTCN.NW.TRASP.F%DIAHOY01                -                                            
+               PTCN.NW.P39%MESUHA24.1.O683DAT.OK       -                                            
+               PTCN.NW.TCNJ1600.TARJ.INAC              -                                            
+                      ))                               -                                            
+       OUTDD(BKP) TOL(ENQF)  SPHERE                                                                 
+  SET MAXCC = 0                                                                                     
+/*                                                                                                  
+//*-------------------------------------------------------------------*                             
+//* STEP0190 PGM=IDCAMS  BORRA ARCHIVOS NONVSAM                       *                             
+//*-------------------------------------------------------------------*                             
+//STEP0190 EXEC PGM=IDCAMS,COND=(0,NE,STEP0180)                                                     
+//SYSOUT   DD SYSOUT=*                                                                              
+//SYSPRINT DD SYSOUT=*                                                                              
+//SYSIN    DD *                                                                                     
+   DELETE  PTCN.NW.PAGOS.AUTOMA               PURGE NONVSAM                                         
+   DELETE  PTCN.NW.PAGOS.CHEQUERA             PURGE NONVSAM                                         
+   DELETE  PTCN.NW.INP%DIAHOY07.1.O683DAT.OK  PURGE NONVSAM                                         
+   DELETE  PTCN.NW.INP%DIAHOY07.1.O683CTR.OK  PURGE NONVSAM                                         
+   DELETE  PTCN.NW.INP%DIAHOY07.6.O683DAT.OK  PURGE NONVSAM                                         
+   DELETE  PTCN.NW.DEM%DIAHOY07.4.O683DAT.OK  PURGE NONVSAM                                         
+   DELETE  PTCN.NW.TRASP.F%DIAHOY01           PURGE NONVSAM                                         
+   DELETE  PTCN.NW.TRASP.F%DIAHOY01           PURGE NONVSAM                                         
+   DELETE  PTCN.NW.TCNJ8007.INPF.O683CTR.OK   PURGE NONVSAM                                         
+   DELETE  PTCN.NW.AIN%DIAANT07.1.O683DAT.OK  PURGE NONVSAM                                         
+   DELETE  PTCN.NW.V33%DIAANT07.1.O683DAT.OK  PURGE NONVSAM                                         
+   DELETE  PTCN.NW.MON%DIAANT07.6.O683DAT.OK  PURGE NONVSAM                                         
+   IF MAXCC EQ 8 THEN SET MAXCC = 0                                                                 
+/*                                                                                                  
+//*------------------------------------------------------------------*//                            
+//* RESPALDO DE ARCHIVOS DB2 PARA PROCESO TCN                        *//                            
+//*------------------------------------------------------------------*//                            
+//STEP0200     EXEC PGM=ADRDSSU                                                                     
+//SYSPRINT     DD SYSOUT=*                                                                          
+//BKP          DD DSN=PTCN.CR.RET090.TCNJ9999.TABLAS.F%DIAHOY01,                                    
+//             DISP=(NEW,CATLG,DELETE),RECFM=VB,LABEL=(1,SL),                                       
+//             LRECL=32756,BLKSIZE=32760,UNIT=CART,VOL=(,,,20)                                      
+//SYSIN        DD *                                                                                 
+  DUMP                                           -                                                  
+       DATASET(INCLUDE(                          -                                                  
+               PTCN.NP.TCNJ9999.T343CTA.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343CTL.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343FDE.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343FRE.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343IPE.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343RCV.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343SOL.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343TAR.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343TRL.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343TNS.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343TPE.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343TRN.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343TRX.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343BTC.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343EQV.UNLOAD   -                                                  
+               PTCN.NP.TCNJ9999.T343LOG.UNLOAD   -                                                  
+                      ))                         -                                                  
+       OUTDD(BKP) TOL(ENQF)  SPHERE                                                                 
+  SET MAXCC = 0                                                                                     
+/*                                                                                                  
+//*------------------------------------------------------------------*//                            

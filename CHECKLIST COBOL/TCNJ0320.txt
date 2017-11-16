@@ -1,0 +1,84 @@
+//TCNJ0320  JOB SAFE,EXPLOTACION,CLASS=A,MSGCLASS=0,COND=(0,NE)                 000010              
+//*=====================================================================        000020              
+//* AUTOR        : OSCAR YIMA FLORES                                            000030              
+//* ENCARGADO BCO: INGRID PIZARRO                                               000040              
+//* FECHA        : 15-05-2015                                                   000050              
+//* OBJETIVO     : GENERAR INTERFAZ EN PARALELO PARA CREAR NORMATIVOS           000060              
+//*                D33, D34 Y D52                                               000070              
+//*---------------------------------------------------------------------        000080              
+//JOBLIB   DD DSN=DB2.V101.DB2A.SDSNEXIT,DISP=SHR                               000090              
+//         DD DSN=DB2.V101.DB2A.SDSNLOAD,DISP=SHR                               000100              
+//         DD DSN=DB2.V101.DB2A.RUNLIB.LOAD,DISP=SHR                            000110              
+//         DD DSN=EXPL.BATCH.LOADLIB,DISP=SHR                                   000120              
+//         DD DSN=EXPL.INGESIST.LOADLIB,DISP=SHR                                000130              
+/*                                                                              000140              
+//**********************************************************************        000150              
+//*  RESPONSABLE     : MATIAS CAMBLOR.                                          000160              
+//*  FECHA           : 26-08-2015                                               000170              
+//*  DESCRIPCION     : - SE RENOMBRAN LOS ARCHIVOS DE TRABAJO EN LOS            000180              
+//*                      STEP0010 EN STEP0020.                                  000190              
+//*  NRO DE MAU      : 4042314.                                                 000200              
+//**********************************************************************        000210              
+//*  RESPONSABLE     : OSCAR YIMA FLORES.                                       000220              
+//*  FECHA           : 23-12-2015                                               000230              
+//*  DESCRIPCION     : - SE AGREGA ARCHIVO AIN DE LA PROCESADORA                000240              
+//*                      TECNOCOM, STEP0020 Y STEP0030.                         000250              
+//**********************************************************************        000260              
+//* STEP0010 BORRADO DE ARCHIVOS DE TRABAJO                            *        000270              
+//**********************************************************************        000280              
+//STEP0010 EXEC PGM=IDCAMS                                                      000290              
+//SYSPRINT DD  SYSOUT=*                                                         000300              
+//SYSIN  DD  *                                                                  000310              
+     DELETE PTCN.NN.DTAS                  PURGE NONVSAM                         000320              
+     DELETE PTCN.NN.CTAS                  PURGE NONVSAM                         000330              
+     DELETE PTCN.NW.TCNJ0300.INCIDEN.UNO  PURGE NONVSAM                         000340              
+     DELETE PTCN.NW.V33.NEXUS.SORT        PURGE NONVSAM                         000350              
+     SET MAXCC = 0                                                              000360              
+/*                                                                              000370              
+//**********************************************************************        000380              
+//* STEP0020 ELIMINA CABEZERA Y TRAILER                                *        000390              
+//**********************************************************************        000400              
+//STEP0020 EXEC PGM=SORT,COND=(0,NE)                                            000410              
+//SYSOUT   DD  SYSOUT=*                                                         000420              
+//SORTWK01 DD  UNIT=SYSDA,SPACE=(CYL,(200,20))                                  000430              
+//SORTWK02 DD  UNIT=SYSDA,SPACE=(CYL,(200,20))                                  000440              
+//SORTWK03 DD  UNIT=SYSDA,SPACE=(CYL,(200,20))                                  000450              
+//SORTWK04 DD  UNIT=SYSDA,SPACE=(CYL,(200,20))                                  000460              
+//SORTIN   DD  DSN=PTCN.NW.AIN%DIAANT07.1.O683DAT.OK,DISP=SHR                   000470              
+//         DD  DSN=PTCN.NW.TECNO.AIN.OK,DISP=SHR                                000480              
+//SORTOUT  DD  DSN=PTCN.NW.V33.NEXUS.SORT,                                      000490              
+//             DISP=(NEW,CATLG,DELETE),                                         000500              
+//             UNIT=SYSDA,LRECL=200,RECFM=FB,BLKSIZE=27800,                     000510              
+//             SPACE=(CYL,(350,35),RLSE)                                        000520              
+//SYSIN    DD  *                                                                000530              
+   SORT FIELDS=COPY                                                             000540              
+   OMIT COND=(01,02,CH,EQ,C'HR',OR,01,02,CH,EQ,C'TR')                           000550              
+/*                                                                              000560              
+//**********************************************************************        000570              
+//* STEO0030 LLAMADA AL PROGRAMA TCNL0320                              *        000580              
+//**********************************************************************        000590              
+//STEP0030 EXEC PGM=IKJEFT01,COND=(0,NE)                                        000600              
+//SYSOUT   DD  SYSOUT=*                                                         000610              
+//SYSDBOUT DD  SYSOUT=*                                                         000620              
+//SYSUDUMP DD  SYSOUT=*                                                         000630              
+//SYSPRINT DD  SYSOUT=*                                                         000640              
+//SYSTSPRT DD  SYSOUT=*                                                         000650              
+//FERIADOS DD DSN=PSIS.DIAS.FERIADOS.AL2000,DISP=SHR                            000660              
+//ENT1SEC  DD DSN=PTCN.NW.V33.NEXUS.SORT,DISP=SHR                               000670              
+//SAL1D33  DD DSN=PTCN.NN.DTAS,DISP=(NEW,CATLG,DELETE),                         000680              
+//            UNIT=SYSDA,LRECL=324,RECFM=FB,BLKSIZE=27864,                      000690              
+//            SPACE=(CYL,(300,30),RLSE)                                         000700              
+//SAL2STD  DD DSN=PTCN.NN.CTAS,DISP=(NEW,CATLG,DELETE),                         000710              
+//            UNIT=SYSDA,LRECL=187,RECFM=FB,BLKSIZE=27863,                      000720              
+//            SPACE=(CYL,(100,10),RLSE)                                         000730              
+//SAL3INC  DD DSN=PTCN.NW.TCNJ0300.INCIDEN.UNO,                                 000740              
+//            DISP=(NEW,CATLG,DELETE),                                          000750              
+//            UNIT=SYSDA,LRECL=230,RECFM=FB,BLKSIZE=27830,                      000760              
+//            SPACE=(CYL,(100,10),RLSE)                                         000770              
+/*                                                                              000780              
+//SYSTSIN  DD *                                                                 000790              
+  DSN SYSTEM(DB2P)                                                              000800              
+  RUN PROGRAM(TCNL0320) -                                                       000810              
+      PLAN(PPISI) LIB('EXPL.BATCH.LOADLIB')                                     000820              
+  END                                                                           000830              
+/*                                                                              000840              
